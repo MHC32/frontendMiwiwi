@@ -1,5 +1,6 @@
 import axios from 'src/utils/axios';
 import type { ICompanyItem } from 'src/types/company';
+import type { IStoreItem, StoreFormValues, StoreListResponse } from 'src/types/store';
 
 type LoginCredentials = {
   phone: string;
@@ -86,7 +87,7 @@ export const companyRequests = {
   // Récupération de l'entreprise du owner (lecture seule)
   getMyCompany: async (): Promise<ICompanyItem | null> => {
     try {
-      const response = await axios.get('/api/company/my-company');
+      const response = await axios.get('/api/owner/my-companies');
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) return null;
@@ -94,17 +95,8 @@ export const companyRequests = {
     }
   },
 
-  // Vérification de la disponibilité du nom d'entreprise
-  checkCompanyName: async (name: string): Promise<{ available: boolean }> => {
-    const response = await axios.get('/api/company/check-name', { params: { name } });
-    return response.data;
-  },
 
-  // Génération d'un code référence (optionnel)
-  generateRefCode: async (name: string): Promise<{ ref_code: string }> => {
-    const response = await axios.get('/api/company/generate-ref', { params: { name } });
-    return response.data;
-  }
+
 };
 
 export const userRequests = {
@@ -148,4 +140,46 @@ export const handleApiError = (error: any) => {
     return { message, status };
   }
   return { message: 'Erreur réseau', status: 0 };
+};
+
+export const storeRequests = {
+  createStore: async (storeData: StoreFormValues): Promise<IStoreItem> => {
+    const response = await axios.post('/api/stores', storeData);
+    return response.data;
+  },
+
+  updateStore: async (id: string, storeData: Partial<StoreFormValues>): Promise<IStoreItem> => {
+    const response = await axios.patch(`/api/owner/stores/${id}`, storeData);
+    return response.data;
+  },
+
+  getStores: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    is_active?: boolean;
+  }): Promise<StoreListResponse> => {
+    const response = await axios.get('/api/owner/stores', { params });
+    return response.data;
+  },
+
+  getStoreDetails: async (id: string): Promise<IStoreItem> => {
+    const response = await axios.get(`/api/owner/stores/${id}`);
+    return response.data;
+  },
+
+  deleteStore: async (id: string): Promise<{ success: boolean }> => {
+    const response = await axios.delete(`/api/owner/stores/${id}`);
+    return response.data;
+  },
+
+  activateStore: async (id: string): Promise<IStoreItem> => {
+    const response = await axios.patch(`/api/owner/stores/${id}/activate`);
+    return response.data;
+  },
+
+  deactivateStore: async (id: string): Promise<IStoreItem> => {
+    const response = await axios.patch(`/api/owner/stores/${id}/deactivate`);
+    return response.data;
+  },
 };

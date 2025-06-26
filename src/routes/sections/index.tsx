@@ -13,8 +13,9 @@ import { JwtLoginView } from 'src/sections/auth/jwt';
 import { AuthGuard } from 'src/auth/guard';
 import DashboardLayout from 'src/layouts/dashboard';
 
-// Company
-const ListCompanyPage = lazy(() => import('src/pages/dashboard/company/list'));
+//  STORE
+const ListStore = lazy(()=> import('src/pages/dashboard/store/list'))
+const EditStore = lazy(()=> import('src/pages/dashboard/store/edit'))
 
 // OVERVIEW
 const IndexPage = lazy(() => import('src/pages/dashboard/app'));
@@ -79,9 +80,11 @@ export default function Router() {
       children: [
         { path: 'app', element: <IndexPage /> },
         {
-          path: 'company',
+          path: 'store',
           children: [
-           { path: 'list', element: <ListCompanyPage />  },
+            { element: <ListStore />, index: true },
+            { path: 'list', element: <ListStore /> },
+            { path: 'edit/:id', element: <EditStore /> } 
           ],
         },
 
@@ -128,3 +131,4 @@ export default function Router() {
     { path: '*', element: <Navigate to="/404" replace /> }
   ]);
 }
+

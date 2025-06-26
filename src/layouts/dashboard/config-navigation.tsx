@@ -68,22 +68,30 @@ export function useNavData() {
         subheader: t('management'),
         items: [
           // USER
-          // {
-          //   title: t('user'),
-          //   path: paths.dashboard.user.root,
-          //   icon: ICONS.user,
-          //   children: [
-          //     { title: t('profile'), path: paths.dashboard.user.root },
-          //     { title: t('list'), path: paths.dashboard.user.list },
-          //     { title: t('create'), path: paths.dashboard.user.new },
-          //     { title: t('account'), path: paths.dashboard.user.account },
-          //   ],
+          {
+            title: 'Utilisateur',
+            path: paths.dashboard.user.root,
+            icon: ICONS.user,
+            children: [
+              { title: 'Compte', path: paths.dashboard.user.account },
+            ],
             
-          // },
+          },
           
-          { title: 'compagnie', path: paths.dashboard.company.list, icon: ICONS.banking },
+          {
+            title: 'Magasin',
+            path: paths.dashboard.store.root,
+            icon: ICONS.banking,
+            children: [
+              { title: 'Liste Magasin', path: paths.dashboard.store.list },
+            ],
+            
+          }
+          
         ],
       },
+
+      
       
     ],
     [t]

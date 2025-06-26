@@ -1,4 +1,3 @@
-// @mui
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
@@ -11,35 +10,35 @@ import ListItemText from '@mui/material/ListItemText';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 // types
-import { ICompanyItem } from 'src/types/company';
+import { IStoreItem } from 'src/types/store';
 // components
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 //
+import StoreQuickEditForm from './store-quick-edit-form';
 
 // ----------------------------------------------------------------------
 
 type Props = {
+  row: IStoreItem;
   selected: boolean;
-  onEditRow: VoidFunction;
-  row: ICompanyItem;
   onSelectRow: VoidFunction;
   onDeleteRow: VoidFunction;
-  hideActions?: boolean; 
+  onEditRow: VoidFunction;
+  onToggleStatus: VoidFunction;
 };
 
-export default function CompanyTableRow({
+export default function StoreTableRow({
   row,
   selected,
   onEditRow,
   onSelectRow,
   onDeleteRow,
-  hideActions = false,
+  onToggleStatus,
 }: Props) {
-  const { name, refCode, settings, status, metadata } = row;
-  // const { isActive } = status;
+  const { name, contact, is_active, employees,} = row;
 
   const confirm = useBoolean();
   const quickEdit = useBoolean();
@@ -53,55 +52,34 @@ export default function CompanyTableRow({
         </TableCell>
 
         <TableCell sx={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar alt={name} sx={{ mr: 2 }}>
-            {name.charAt(0)}
+          <Avatar alt={name} sx={{ mr: 2, bgcolor: 'primary.main' }}>
+            <Iconify icon="solar:shop-bold" />
           </Avatar>
 
           <ListItemText
             primary={name}
-            secondary={`Ref: ${refCode}`}
-            primaryTypographyProps={{ typography: 'body2' }}
+            secondary={`${contact.address.city}, ${contact.address.country}`}
+            primaryTypographyProps={{ typography: 'body2', fontWeight: 'bold' }}
             secondaryTypographyProps={{ component: 'span', color: 'text.disabled' }}
           />
         </TableCell>
 
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          {settings.currency} - Taxe: {settings.taxRate}%
+          {contact.phone}
         </TableCell>
 
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          {metadata.storeCount} magasins
-        </TableCell>
-
-        <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          {metadata.employeeCount} employés
-        </TableCell>
-
-        {/* <TableCell>
-          <Label
-            variant="soft"
-            color={isActive ? 'success' : 'error'}
-          >
-            {isActive ? 'Active' : 'Inactive'}
+        <TableCell>
+          <Label variant="soft" color={is_active ? 'success' : 'error'}>
+            {is_active ? 'Actif' : 'Inactif'}
           </Label>
-        </TableCell> */}
-
-        {!hideActions && (
-        <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
-          <Tooltip title="Édition rapide" placement="top" arrow>
-            <IconButton color={quickEdit.value ? 'inherit' : 'default'} onClick={quickEdit.onTrue}>
-              <Iconify icon="solar:pen-bold" />
-            </IconButton>
-          </Tooltip>
-
-          <IconButton color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
-            <Iconify icon="eva:more-vertical-fill" />
-          </IconButton>
         </TableCell>
-      )}
+
+        <TableCell>
+          {employees?.length || 0} employé(s)
+        </TableCell>
 
         <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
-          <Tooltip title="Édition rapide" placement="top" arrow>
+          <Tooltip title="Modification rapide" placement="top" arrow>
             <IconButton color={quickEdit.value ? 'inherit' : 'default'} onClick={quickEdit.onTrue}>
               <Iconify icon="solar:pen-bold" />
             </IconButton>
@@ -113,6 +91,7 @@ export default function CompanyTableRow({
         </TableCell>
       </TableRow>
 
+      <StoreQuickEditForm currentStore={row} open={quickEdit.value} onClose={quickEdit.onFalse} />
 
       <CustomPopover
         open={popover.open}
@@ -138,18 +117,28 @@ export default function CompanyTableRow({
           }}
         >
           <Iconify icon="solar:pen-bold" />
-          Éditer
+          Modifier
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            onToggleStatus();
+            popover.onClose();
+          }}
+        >
+          <Iconify icon={is_active ? "solar:eye-closed-bold" : "solar:eye-bold"} />
+          {is_active ? 'Désactiver' : 'Activer'}
         </MenuItem>
       </CustomPopover>
 
       <ConfirmDialog
         open={confirm.value}
         onClose={confirm.onFalse}
-        title="Supprimer"
-        content="Êtes-vous sûr de vouloir supprimer cette entreprise ?"
+        title="Supprimer le magasin"
+        content="Êtes-vous sûr de vouloir supprimer ce magasin ? Cette action est irréversible."
         action={
           <Button variant="contained" color="error" onClick={onDeleteRow}>
-            Supprimer
+            Confirmer
           </Button>
         }
       />

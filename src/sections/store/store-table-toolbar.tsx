@@ -11,7 +11,7 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 // types
-import { ICompanyTableFilters, ICompanyTableFilterValue } from 'src/types/company';
+import { IStoreTableFilters, IStoreTableFilterValue } from 'src/types/store';
 // components
 import Iconify from 'src/components/iconify';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
@@ -19,16 +19,17 @@ import CustomPopover, { usePopover } from 'src/components/custom-popover';
 // ----------------------------------------------------------------------
 
 type Props = {
-  filters: ICompanyTableFilters;
-  onFilters: (name: keyof ICompanyTableFilters, value: ICompanyTableFilterValue) => void;
-  statusOptions: string[];
+  filters: IStoreTableFilters;
+  onFilters: (name: string, value: IStoreTableFilterValue) => void;
+  cityOptions: string[];
+  onRefresh: () => void;
 };
 
-export default function CompanyTableToolbar({
+export default function StoreTableToolbar({
   filters,
   onFilters,
-  //
-  statusOptions,
+  cityOptions,
+  onRefresh,
 }: Props) {
   const popover = usePopover();
 
@@ -39,15 +40,22 @@ export default function CompanyTableToolbar({
     [onFilters]
   );
 
-    const handleFilterStatus = useCallback(
-        (event: SelectChangeEvent<string[]>) => {
-            const value = typeof event.target.value === 'string'
-                ? event.target.value.split(',')
-                : event.target.value;
-            onFilters('status', value);
-        },
-        [onFilters]
-    );
+  const handleFilterCity = useCallback(
+    (event: SelectChangeEvent<string[]>) => {
+      onFilters(
+        'city',
+        typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value
+      );
+    },
+    [onFilters]
+  );
+
+  const handleFilterStatus = useCallback(
+    (event: SelectChangeEvent<IStoreTableFilterValue>) => {
+      onFilters('status', event.target.value as string);
+    },
+    [onFilters]
+  );
 
   return (
     <>
@@ -69,26 +77,43 @@ export default function CompanyTableToolbar({
             width: { xs: 1, md: 200 },
           }}
         >
-          <InputLabel>Statut</InputLabel>
-
+          <InputLabel>Ville</InputLabel>
           <Select
             multiple
-            value={filters.status}
-            onChange={handleFilterStatus}
-            input={<OutlinedInput label="Statut" />}
-            renderValue={(selected) => selected.map((value) => value).join(', ')}
+            value={filters.city}
+            onChange={handleFilterCity}
+            input={<OutlinedInput label="Ville" />}
+            renderValue={(selected) => selected.join(', ')}
             MenuProps={{
               PaperProps: {
                 sx: { maxHeight: 240 },
               },
             }}
           >
-            {statusOptions.map((option) => (
+            {cityOptions.map((option) => (
               <MenuItem key={option} value={option}>
-                <Checkbox disableRipple size="small" checked={filters.status.includes(option)} />
+                <Checkbox disableRipple size="small" checked={filters.city.includes(option)} />
                 {option}
               </MenuItem>
             ))}
+          </Select>
+        </FormControl>
+
+        <FormControl
+          sx={{
+            flexShrink: 0,
+            width: { xs: 1, md: 180 },
+          }}
+        >
+          <InputLabel>Statut</InputLabel>
+          <Select
+            value={filters.status}
+            onChange={handleFilterStatus}
+            input={<OutlinedInput label="Statut" />}
+          >
+            <MenuItem value="all">Tous</MenuItem>
+            <MenuItem value="active">Actif</MenuItem>
+            <MenuItem value="inactive">Inactif</MenuItem>
           </Select>
         </FormControl>
 
@@ -97,7 +122,7 @@ export default function CompanyTableToolbar({
             fullWidth
             value={filters.name}
             onChange={handleFilterName}
-            placeholder="Rechercher..."
+            placeholder="Rechercher un magasin..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -106,6 +131,10 @@ export default function CompanyTableToolbar({
               ),
             }}
           />
+
+          <IconButton onClick={onRefresh}>
+            <Iconify icon="eva:refresh-fill" />
+          </IconButton>
 
           <IconButton onClick={popover.onOpen}>
             <Iconify icon="eva:more-vertical-fill" />
@@ -117,33 +146,26 @@ export default function CompanyTableToolbar({
         open={popover.open}
         onClose={popover.onClose}
         arrow="right-top"
-        sx={{ width: 140 }}
+        sx={{ width: 160 }}
       >
         <MenuItem
           onClick={() => {
             popover.onClose();
-          }}
-        >
-          <Iconify icon="solar:printer-minimalistic-bold" />
-          Imprimer
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            popover.onClose();
-          }}
-        >
-          <Iconify icon="solar:import-bold" />
-          Importer
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            popover.onClose();
+            // Implémenter l'export
           }}
         >
           <Iconify icon="solar:export-bold" />
           Exporter
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            popover.onClose();
+            // Implémenter l'impression
+          }}
+        >
+          <Iconify icon="solar:printer-minimalistic-bold" />
+          Imprimer
         </MenuItem>
       </CustomPopover>
     </>

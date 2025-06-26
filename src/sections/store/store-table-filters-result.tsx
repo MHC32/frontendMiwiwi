@@ -1,39 +1,36 @@
-// @mui
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import Stack, { StackProps } from '@mui/material/Stack';
-// types
-import { ICompanyTableFilters, ICompanyTableFilterValue } from 'src/types/company';
 // components
 import Iconify from 'src/components/iconify';
+// types
+import { IStoreTableFilters, IStoreTableFilterValue } from 'src/types/store';
 
 // ----------------------------------------------------------------------
 
 type Props = StackProps & {
-  filters: ICompanyTableFilters;
-  onFilters: (name: string, value: ICompanyTableFilterValue) => void;
+  filters: IStoreTableFilters;
+  onFilters: (name: string, value: IStoreTableFilterValue) => void;
   onResetFilters: VoidFunction;
   results: number;
-  statusOptions: string[];
 };
 
-export default function CompanyTableFiltersResult({
+export default function StoreTableFiltersResult({
   filters,
   onFilters,
   onResetFilters,
   results,
-  statusOptions,
   ...other
 }: Props) {
-  const handleRemoveStatus = (inputValue: string) => {
-    const newValue = filters.status.filter((item) => item !== inputValue);
-    onFilters('status', newValue.length > 0 ? newValue : statusOptions); // Retourne tous les statuts si vide
+  const handleRemoveStatus = () => {
+    onFilters('status', 'all');
   };
 
-  const handleRemoveName = () => {
-    onFilters('name', '');
+  const handleRemoveCity = (inputValue: string) => {
+    const newValue = filters.city.filter((item) => item !== inputValue);
+    onFilters('city', newValue);
   };
 
   return (
@@ -41,25 +38,29 @@ export default function CompanyTableFiltersResult({
       <Box sx={{ typography: 'body2' }}>
         <strong>{results}</strong>
         <Box component="span" sx={{ color: 'text.secondary', ml: 0.25 }}>
-          résultats trouvés
+          résultat(s) trouvé(s)
         </Box>
       </Box>
 
       <Stack flexGrow={1} spacing={1} direction="row" flexWrap="wrap" alignItems="center">
-        {filters.name && (
-          <Block label="Nom:">
-            <Chip size="small" label={filters.name} onDelete={handleRemoveName} />
+        {filters.status !== 'all' && (
+          <Block label="Statut:">
+            <Chip
+              size="small"
+              label={filters.status === 'active' ? 'Actif' : 'Inactif'}
+              onDelete={handleRemoveStatus}
+            />
           </Block>
         )}
 
-        {filters.status.length > 0 && filters.status.length < statusOptions.length && (
-          <Block label="Statut:">
-            {filters.status.map((item) => (
+        {!!filters.city.length && (
+          <Block label="Ville:">
+            {filters.city.map((item) => (
               <Chip 
                 key={item} 
                 label={item} 
                 size="small" 
-                onDelete={() => handleRemoveStatus(item)} 
+                onDelete={() => handleRemoveCity(item)} 
               />
             ))}
           </Block>

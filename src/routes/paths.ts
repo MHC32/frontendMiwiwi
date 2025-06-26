@@ -102,9 +102,12 @@ export const paths = {
       root: `${ROOTS.DASHBOARD}/order`,
     },
 
-    company: {
-      root: `${ROOTS.DASHBOARD}/company`,
-      list: `${ROOTS.DASHBOARD}/company/list`,
+    store: {
+      root: `${ROOTS.DASHBOARD}/store`,
+      list: `${ROOTS.DASHBOARD}/store/list`, // Chemin distinct
+      // Ajoutez si nécessaire :
+      new: `${ROOTS.DASHBOARD}/store/new`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/store/edit/${id}`
     }
   },
 };
