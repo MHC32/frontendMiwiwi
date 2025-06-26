@@ -75,7 +75,7 @@ export default function StoreTableRow({
         </TableCell>
 
         <TableCell>
-          {employees?.length || 0} employé(s)
+          {row.employees_count || 0} employé(s)
         </TableCell>
 
         <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>

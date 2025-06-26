@@ -21,6 +21,7 @@ export type IStoreItem = {
   company_id: string;
   supervisor_id: string | null;
   employees: StoreEmployee[];
+  employees_count: number; 
   is_active: boolean;
   created_at: Date | string;
   updated_at: Date | string;
