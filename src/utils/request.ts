@@ -178,9 +178,6 @@ export const storeRequests = {
     if (storeData.contact?.address?.country) {
       formData.append('contact[address][country]', storeData.contact.address.country);
     }
-    if (typeof storeData.is_active !== 'undefined') {
-      formData.append('is_active', String(storeData.is_active));
-    }
     
     if (storeData.supervisor_id) {
       formData.append('supervisor_id', storeData.supervisor_id);

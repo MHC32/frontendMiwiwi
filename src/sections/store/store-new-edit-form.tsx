@@ -297,16 +297,16 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
                 labelPlacement="start"
                 control={
                   <Controller
-                    name="is_active"
-                    control={control}
-                    render={({ field }) => (
-                      <Switch
-                        checked={Boolean(field.value)} // Conversion explicite
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        color="success"
-                      />
-                    )}
-                  />
+        name="is_active"
+        control={control}
+        render={({ field }) => (
+          <Switch
+            checked={field.value}
+            onChange={(e) => field.onChange(e.target.checked)}
+            color="success"
+          />
+        )}
+      />
                 }
                 label={
                   <>
