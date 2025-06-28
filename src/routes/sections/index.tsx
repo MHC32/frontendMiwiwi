@@ -16,6 +16,7 @@ import DashboardLayout from 'src/layouts/dashboard';
 //  STORE
 const ListStore = lazy(()=> import('src/pages/dashboard/store/list'))
 const EditStore = lazy(()=> import('src/pages/dashboard/store/edit'))
+const NewStore = lazy(()=> import('src/pages/dashboard/store/create'))
 
 // OVERVIEW
 const IndexPage = lazy(() => import('src/pages/dashboard/app'));
@@ -84,7 +85,8 @@ export default function Router() {
           children: [
             { element: <ListStore />, index: true },
             { path: 'list', element: <ListStore /> },
-            { path: 'edit/:id', element: <EditStore /> } 
+            { path: 'edit/:id', element: <EditStore /> },
+            { path: 'new', element: <NewStore /> } 
           ],
         },
 

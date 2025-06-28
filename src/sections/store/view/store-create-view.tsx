@@ -23,7 +23,7 @@ export default function StoreCreateView() {
           },
           {
             name: 'Magasins',
-            // href: paths.dashboard.store.root,
+            href: paths.dashboard.store.root,
           },
           { name: 'Nouveau magasin' },
         ]}

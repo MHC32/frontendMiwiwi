@@ -21,8 +21,9 @@ export type IStoreItem = {
   company_id: string;
   supervisor_id: string | null;
   employees: StoreEmployee[];
-  employees_count: number; 
+  employees_count: number;
   is_active: boolean;
+  photo?: string; // Seulement l'URL string en réponse API
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -44,6 +45,8 @@ export type StoreFormValues = {
       country: string;
     };
   };
+  is_active: boolean;
+  photo?: string | File | null; // Accepte File (nouveau upload), string (URL existante) ou null (suppression)
   supervisor_id?: string;
 };
 
@@ -55,4 +58,12 @@ export type StoreListResponse = {
     limit: number;
     totalPages: number;
   };
+};
+
+// Type pour la prévisualisation dans le formulaire
+export type StorePhotoPreview = {
+  preview?: string;
+  name?: string;
+  size?: number;
+  type?: string;
 };

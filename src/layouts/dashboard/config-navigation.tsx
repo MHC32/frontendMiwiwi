@@ -83,6 +83,7 @@ export function useNavData() {
             path: paths.dashboard.store.root,
             icon: ICONS.banking,
             children: [
+              { title: 'Ajouter Magasin', path: paths.dashboard.store.new },
               { title: 'Liste Magasin', path: paths.dashboard.store.list },
             ],
             

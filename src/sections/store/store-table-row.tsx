@@ -38,7 +38,7 @@ export default function StoreTableRow({
   onDeleteRow,
   onToggleStatus,
 }: Props) {
-  const { name, contact, is_active, employees,} = row;
+  const { name, contact, is_active, employees, photo } = row;
 
   const confirm = useBoolean();
   const quickEdit = useBoolean();
@@ -52,9 +52,18 @@ export default function StoreTableRow({
         </TableCell>
 
         <TableCell sx={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar alt={name} sx={{ mr: 2, bgcolor: 'primary.main' }}>
-            <Iconify icon="solar:shop-bold" />
-          </Avatar>
+          {photo ? (
+            <Avatar 
+              alt={name} 
+              src={photo} 
+              sx={{ mr: 2 }}
+              variant="rounded"
+            />
+          ) : (
+            <Avatar alt={name} sx={{ mr: 2, bgcolor: 'primary.main' }}>
+              <Iconify icon="solar:shop-bold" />
+            </Avatar>
+          )}
 
           <ListItemText
             primary={name}

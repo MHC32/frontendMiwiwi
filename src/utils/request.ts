@@ -141,15 +141,63 @@ export const handleApiError = (error: any) => {
   }
   return { message: 'Erreur réseau', status: 0 };
 };
-
 export const storeRequests = {
   createStore: async (storeData: StoreFormValues): Promise<IStoreItem> => {
-    const response = await axios.post('/api/stores', storeData);
+    const formData = new FormData();
+    
+    // Champs obligatoires
+    formData.append('name', storeData.name);
+    formData.append('contact[phone]', storeData.contact.phone);
+    formData.append('contact[address][city]', storeData.contact.address.city);
+    formData.append('contact[address][country]', storeData.contact.address.country || 'Haïti');
+    formData.append('is_active', String(storeData.is_active ?? true));
+
+    // Champs optionnels
+    if (storeData.supervisor_id) {
+      formData.append('supervisor_id', storeData.supervisor_id);
+    }
+    
+    // Gestion de la photo
+    if (storeData.photo instanceof File) {
+      formData.append('photo', storeData.photo);
+    }
+
+    const response = await axios.post('/api/owner/stores', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
   updateStore: async (id: string, storeData: Partial<StoreFormValues>): Promise<IStoreItem> => {
-    const response = await axios.patch(`/api/owner/stores/${id}`, storeData);
+    const formData = new FormData();
+    
+    // Champs modifiables
+    if (storeData.name) formData.append('name', storeData.name);
+    if (storeData.contact?.phone) formData.append('contact[phone]', storeData.contact.phone);
+    if (storeData.contact?.address?.city) formData.append('contact[address][city]', storeData.contact.address.city);
+    if (storeData.contact?.address?.country) {
+      formData.append('contact[address][country]', storeData.contact.address.country);
+    }
+    if (typeof storeData.is_active !== 'undefined') {
+      formData.append('is_active', String(storeData.is_active));
+    }
+    
+    if (storeData.supervisor_id) {
+      formData.append('supervisor_id', storeData.supervisor_id);
+    }
+    
+    // Gestion de la photo
+    if (storeData.photo instanceof File) {
+      formData.append('photo', storeData.photo);
+    }
+
+    const response = await axios.patch(`/api/owner/stores/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -168,9 +216,8 @@ export const storeRequests = {
     return response.data;
   },
 
-  deleteStore: async (id: string): Promise<{ success: boolean }> => {
-    const response = await axios.delete(`/api/owner/stores/${id}`);
-    return response.data;
+  deleteStore: async (id: string): Promise<void> => {
+    await axios.delete(`/api/owner/stores/${id}`);
   },
 
   activateStore: async (id: string): Promise<IStoreItem> => {

@@ -105,7 +105,6 @@ export const paths = {
     store: {
       root: `${ROOTS.DASHBOARD}/store`,
       list: `${ROOTS.DASHBOARD}/store/list`, // Chemin distinct
-      // Ajoutez si nécessaire :
       new: `${ROOTS.DASHBOARD}/store/new`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/store/edit/${id}`
     }

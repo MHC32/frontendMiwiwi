@@ -59,7 +59,13 @@ const storeSlice = createSlice({
     updateStoreSuccess(state, action: PayloadAction<IStoreItem>) {
       state.isLoading = false;
       state.stores = state.stores.map(store =>
-        store.id === action.payload.id ? action.payload : store
+        store.id === action.payload.id ? { 
+          ...store, 
+          ...action.payload,
+          // Conserver les employés existants si non fournis dans la mise à jour
+          employees: action.payload.employees || store.employees,
+          employees_count: action.payload.employees_count || store.employees_count
+        } : store
       );
       if (state.currentStore?.id === action.payload.id) {
         state.currentStore = action.payload;
@@ -75,19 +81,31 @@ const storeSlice = createSlice({
     },
     toggleStoreStatusSuccess(state, action: PayloadAction<IStoreItem>) {
       state.isLoading = false;
+      const updatedStore = action.payload;
       state.stores = state.stores.map(store =>
-        store.id === action.payload.id ? action.payload : store
+        store.id === updatedStore.id ? updatedStore : store
       );
-      if (state.currentStore?.id === action.payload.id) {
-        state.currentStore = action.payload;
+      if (state.currentStore?.id === updatedStore.id) {
+        state.currentStore = updatedStore;
       }
     },
     resetStoreState(state) {
       Object.assign(state, initialState);
     },
+    // Nouveau reducer pour la mise à jour spécifique de la photo
+    updateStorePhotoSuccess(state, action: PayloadAction<{id: string; photo: string}>) {
+      const { id, photo } = action.payload;
+      state.stores = state.stores.map(store =>
+        store.id === id ? { ...store, photo } : store
+      );
+      if (state.currentStore?.id === id) {
+        state.currentStore = { ...state.currentStore, photo };
+      }
+    },
   },
 });
 
+// Export des actions
 export const {
   startLoading,
   hasError,
@@ -98,9 +116,10 @@ export const {
   deleteStoreSuccess,
   toggleStoreStatusSuccess,
   resetStoreState,
+  updateStorePhotoSuccess,
 } = storeSlice.actions;
 
-// Thunks
+// Thunks (actions asynchrones)
 export const fetchStores = (params?: {
   page?: number;
   limit?: number;
@@ -112,8 +131,7 @@ export const fetchStores = (params?: {
     const response = await storeRequests.getStores(params);
     dispatch(getStoresSuccess(response));
   } catch (error) {
-    dispatch(hasError(error.message));
-    throw error;
+    dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
   }
 };
 
@@ -123,8 +141,7 @@ export const fetchStoreDetails = (id: string) => async (dispatch: AppDispatch) =
     const response = await storeRequests.getStoreDetails(id);
     dispatch(getStoreDetailsSuccess(response));
   } catch (error) {
-    dispatch(hasError(error.message));
-    throw error;
+    dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
   }
 };
 
@@ -135,7 +152,7 @@ export const createStore = (data: StoreFormValues) => async (dispatch: AppDispat
     dispatch(createStoreSuccess(response));
     return response;
   } catch (error) {
-    dispatch(hasError(error.message));
+    dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
     throw error;
   }
 };
@@ -148,7 +165,7 @@ export const updateStore = (id: string, data: Partial<StoreFormValues>) =>
       dispatch(updateStoreSuccess(response));
       return response;
     } catch (error) {
-      dispatch(hasError(error.message));
+      dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
       throw error;
     }
   };
@@ -159,10 +176,23 @@ export const deleteStore = (id: string) => async (dispatch: AppDispatch) => {
     await storeRequests.deleteStore(id);
     dispatch(deleteStoreSuccess(id));
   } catch (error) {
-    dispatch(hasError(error.message));
+    dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
     throw error;
   }
 };
+
+export const updateStorePhoto = (id: string, photoFile: File) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(startLoading());
+      const response = await storeRequests.updateStore(id, { photo: photoFile });
+      dispatch(updateStorePhotoSuccess({ id, photo: response.photo || '' }));
+      return response;
+    } catch (error) {
+      dispatch(hasError(error instanceof Error ? error.message : 'Erreur inconnue'));
+      throw error;
+    }
+  };
 
 export const activateStore = (id: string) => async (dispatch: AppDispatch) => {
   try {
@@ -196,13 +226,14 @@ export const toggleStoreStatus = (id: string, currentStatus: boolean) =>
       : dispatch(activateStore(id));
   };
 
-
-export default storeSlice.reducer;
-
-
+// Selectors
 export const selectStoreState = (state: { store: StoreState }) => state.store;
 export const selectStores = (state: { store: StoreState }) => state.store.stores;
 export const selectCurrentStore = (state: { store: StoreState }) => state.store.currentStore;
 export const selectStoreLoading = (state: { store: StoreState }) => state.store.isLoading;
 export const selectStoreError = (state: { store: StoreState }) => state.store.error;
 export const selectStorePagination = (state: { store: StoreState }) => state.store.pagination;
+export const selectStoreById = (id: string) => (state: { store: StoreState }) => 
+  state.store.stores.find(store => store.id === id);
+
+export default storeSlice.reducer;
