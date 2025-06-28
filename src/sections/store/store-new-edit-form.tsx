@@ -1,5 +1,5 @@
 import * as Yup from 'yup';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 // @mui
@@ -40,7 +40,7 @@ interface FormValuesProps extends Omit<StoreFormValues, 'photo'> {
 }
 
 type Props = {
-  currentStore?: IStoreItem;
+  currentStore?: IStoreItem | null;
   storeId?: string;
 };
 
@@ -59,12 +59,14 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
         country: Yup.string().required('Le pays est requis'),
       }),
     }),
-    is_active: Yup.boolean(),
+    is_active: Yup.boolean()
+    .transform((value) => value === 'true' || value === true) // Conversion des strings
+    .default(true),
     photoUrl: Yup.mixed()
       .nullable()
       .test('fileSize', 'La taille maximale est de 3MB', (value) => {
         if (value instanceof File) {
-          return value.size <= 3145728; // 3MB
+          return value.size <= 3145728;
         }
         return true;
       })
@@ -76,22 +78,30 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
       }),
   });
 
-  const defaultValues = useMemo<FormValuesProps>(
-    () => ({
+  const defaultValues = useMemo<FormValuesProps>(() => {
+    // Valeurs par défaut sécurisées
+    const contact = currentStore?.contact || {
+      phone: '',
+      address: {
+        city: '',
+        country: 'Haïti'
+      }
+    };
+
+    return {
       name: currentStore?.name || '',
       contact: {
-        phone: currentStore?.contact?.phone || '',
+        phone: contact.phone,
         address: {
-          city: currentStore?.contact?.address?.city || '',
-          country: currentStore?.contact?.address?.country || 'Haïti',
-        },
+          city: contact.address?.city || '',
+          country: contact.address?.country || 'Haïti'
+        }
       },
       is_active: currentStore?.is_active ?? true,
       photoUrl: currentStore?.photo || null,
       supervisor_id: currentStore?.supervisor_id || undefined,
-    }),
-    [currentStore]
-  );
+    };
+  }, [currentStore]);
 
   const methods = useForm<FormValuesProps>({
     resolver: yupResolver(StoreSchema),
@@ -109,22 +119,87 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
 
   const values = watch();
 
-  const prepareFormData = (data: FormValuesProps): StoreFormValues => {
+  // Réinitialisation sécurisée du formulaire
+  useEffect(() => {
+    if (currentStore) {
+      const safeContact = currentStore.contact || {
+        phone: '',
+        address: {
+          city: '',
+          country: 'Haïti'
+        }
+      };
+
+      reset({
+        name: currentStore.name || '',
+        contact: {
+          phone: safeContact.phone,
+          address: {
+            city: safeContact.address?.city || '',
+            country: safeContact.address?.country || 'Haïti'
+          }
+        },
+        is_active: currentStore.is_active ?? true,
+        photoUrl: currentStore.photo || null,
+        supervisor_id: currentStore.supervisor_id || undefined,
+      });
+    }
+  }, [currentStore, reset]);
+
+  const prepareFormData = (data: FormValuesProps, currentStore?: IStoreItem | null): StoreFormValues => {
+  // Si c'est une création (pas de currentStore), on utilise toutes les données du formulaire
+  if (!currentStore) {
     return {
       name: data.name,
-      contact: data.contact,
-      is_active: data.is_active,
+      contact: {
+        phone: data.contact.phone,
+        address: {
+          city: data.contact.address.city,
+          country: data.contact.address.country
+        }
+      },
+      is_active: Boolean(data.is_active),
       supervisor_id: data.supervisor_id,
-      photo: data.photoUrl instanceof File ? data.photoUrl : data.photoUrl || undefined,
+      photo: data.photoUrl instanceof File ? data.photoUrl : data.photoUrl || undefined
     };
+  }
+
+  // Si c'est une mise à jour, on merge les données existantes avec les modifications
+  return {
+    name: data.name !== currentStore.name ? data.name : currentStore.name,
+    contact: {
+      phone: data.contact.phone !== currentStore.contact?.phone 
+        ? data.contact.phone 
+        : currentStore.contact?.phone || '',
+      address: {
+        city: data.contact.address.city !== currentStore.contact?.address?.city
+          ? data.contact.address.city
+          : currentStore.contact?.address?.city || '',
+        country: data.contact.address.country !== currentStore.contact?.address?.country
+          ? data.contact.address.country
+          : currentStore.contact?.address?.country || 'Haïti'
+      }
+    },
+    is_active: typeof data.is_active !== 'undefined' 
+      ? Boolean(data.is_active)
+      : currentStore.is_active,
+    supervisor_id: data.supervisor_id !== currentStore.supervisor_id
+      ? data.supervisor_id
+      : currentStore.supervisor_id,
+    photo: data.photoUrl instanceof File 
+      ? data.photoUrl 
+      : data.photoUrl === null 
+        ? null 
+        : currentStore.photo
   };
+};
 
   const onSubmit = useCallback(
     async (data: FormValuesProps) => {
       try {
         const formData = prepareFormData(data);
 
-        if (storeId) {
+        if (storeId && currentStore) {
           await storeRequests.updateStore(storeId, formData);
           enqueueSnackbar('Magasin mis à jour avec succès !');
         } else {
@@ -140,7 +215,7 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
         );
       }
     },
-    [storeId, enqueueSnackbar, router]
+    [storeId, enqueueSnackbar, router, currentStore]
   );
 
   const handleDrop = useCallback(
@@ -173,6 +248,11 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
       enqueueSnackbar('Erreur lors de la suppression', { variant: 'error' });
     }
   }, [storeId, enqueueSnackbar, router]);
+
+  // Afficher un loader si currentStore est en cours de chargement
+  if (storeId && !currentStore) {
+    return <div>Chargement...</div>;
+  }
 
   return (
     <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
@@ -221,7 +301,7 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
                     control={control}
                     render={({ field }) => (
                       <Switch
-                        checked={field.value}
+                        checked={Boolean(field.value)} // Conversion explicite
                         onChange={(e) => field.onChange(e.target.checked)}
                         color="success"
                       />
@@ -268,7 +348,10 @@ export default function StoreNewEditForm({ currentStore, storeId }: Props) {
                 sm: 'repeat(2, 1fr)',
               }}
             >
-              <RHFTextField name="name" label="Nom du magasin" />
+              <RHFTextField 
+                name="name" 
+                label="Nom du magasin"
+              />
 
               <RHFTextField
                 name="contact.phone"

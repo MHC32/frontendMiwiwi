@@ -141,6 +141,8 @@ export const handleApiError = (error: any) => {
   }
   return { message: 'Erreur réseau', status: 0 };
 };
+
+
 export const storeRequests = {
   createStore: async (storeData: StoreFormValues): Promise<IStoreItem> => {
     const formData = new FormData();
@@ -152,10 +154,6 @@ export const storeRequests = {
     formData.append('contact[address][country]', storeData.contact.address.country || 'Haïti');
     formData.append('is_active', String(storeData.is_active ?? true));
 
-    // Champs optionnels
-    if (storeData.supervisor_id) {
-      formData.append('supervisor_id', storeData.supervisor_id);
-    }
     
     // Gestion de la photo
     if (storeData.photo instanceof File) {
