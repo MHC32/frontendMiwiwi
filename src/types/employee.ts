@@ -9,11 +9,11 @@ export interface IEmployeeBase {
   phone: string;
   email?: string;
   role: EmployeeRole;
+  pin_code: string; 
   is_active: boolean;
   created_at: Date | string;
   updated_at: Date | string;
 }
-
 export interface IEmployee extends IEmployeeBase {
   // Pour les cashiers
   store_id?: string; // ID du magasin assigné

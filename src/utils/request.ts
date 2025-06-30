@@ -255,7 +255,7 @@ export const employeeRequests = {
 
     const response = await axios.post('/api/owner/employees', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
     return response.data;
@@ -282,7 +282,7 @@ export const employeeRequests = {
 
     const response = await axios.patch(`/api/owner/employees/${id}`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
     return response.data;

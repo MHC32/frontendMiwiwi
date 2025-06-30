@@ -1,6 +1,6 @@
 import * as Yup from 'yup';
 import { useCallback, useEffect, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useSelector, useDispatch } from 'src/redux/store';
 // @mui
@@ -9,31 +9,27 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Switch from '@mui/material/Switch';
-import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
-import FormControlLabel from '@mui/material/FormControlLabel';
+import MenuItem from '@mui/material/MenuItem';
 // routes
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hook';
 // types
 import { Cashier, Supervisor, EmployeeFormValues } from 'src/types/employee';
 // components
-import Label from 'src/components/label';
-import Iconify from 'src/components/iconify';
 import { useSnackbar } from 'src/components/snackbar';
 import FormProvider, {
-  RHFSwitch,
   RHFTextField,
   RHFSelect,
+  RHFSwitch,
 } from 'src/components/hook-form';
 // requests
 import { employeeRequests } from 'src/utils/request';
-import MenuItem from '@mui/material/MenuItem';
 // redux
 import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
 
+import Iconify from 'src/components/iconify';
 // ----------------------------------------------------------------------
 
 interface FormValuesProps extends EmployeeFormValues {}
@@ -49,7 +45,7 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
   const dispatch = useDispatch();
   const stores = useSelector(selectStores);
 
-  // Charger les magasins actifs au montage du composant
+  // Charger les magasins actifs
   useEffect(() => {
     dispatch(fetchStores({ is_active: true }));
   }, [dispatch]);
@@ -60,14 +56,21 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
     phone: Yup.string()
       .required('Le téléphone est requis')
       .matches(/^[0-9]{8,15}$/, 'Numéro de téléphone invalide'),
-    email: Yup.string().email('Email invalide').optional(),
+    email: Yup.string().optional().email('Email invalide'),
     role: Yup.string().required('Le rôle est requis'),
-    is_active: Yup.boolean()
-      .transform((value) => value === 'true' || value === true)
-      .default(true),
+    password: Yup.string()
+      .when('employeeId', {
+        is: undefined,
+        then: (schema) => schema.required('Le mot de passe est requis').min(6, 'Minimum 6 caractères'),
+        otherwise: (schema) => schema.optional(),
+      }),
+    pin_code: Yup.string()
+      .required('Le code PIN est requis')
+      .matches(/^[0-9]{4}$/, 'Doit être 4 chiffres'),
+    is_active: Yup.boolean().default(true),
     store_id: Yup.string().when('role', {
       is: 'cashier',
-      then: (schema) => schema.required('Le magasin est requis pour un caissier'),
+      then: (schema) => schema.required('Le magasin est requis'),
     }),
     supervised_store_id: Yup.string().when('role', {
       is: 'supervisor',
@@ -75,22 +78,22 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
     }),
   });
 
-  const defaultValues = useMemo<FormValuesProps>(() => {
-    return {
-      first_name: currentEmployee?.first_name || '',
-      last_name: currentEmployee?.last_name || '',
-      phone: currentEmployee?.phone || '',
-      email: currentEmployee?.email || '',
-      role: currentEmployee?.role || 'cashier',
-      is_active: currentEmployee?.is_active ?? true,
-      store_id: currentEmployee?.role === 'cashier' 
-        ? (currentEmployee as Cashier).store_id || '' 
-        : '',
-      supervised_store_id: currentEmployee?.role === 'supervisor' 
-        ? (currentEmployee as Supervisor).supervised_store_id || '' 
-        : '',
-    };
-  }, [currentEmployee]);
+  const defaultValues = useMemo<FormValuesProps>(() => ({
+    first_name: currentEmployee?.first_name || '',
+    last_name: currentEmployee?.last_name || '',
+    phone: currentEmployee?.phone || '',
+    email: currentEmployee?.email || '',
+    role: currentEmployee?.role || 'cashier',
+    password: '',
+    pin_code: currentEmployee?.pin_code || '',
+    is_active: currentEmployee?.is_active ?? true,
+    store_id: currentEmployee?.role === 'cashier' 
+      ? (currentEmployee as Cashier).store_id || '' 
+      : '',
+    supervised_store_id: currentEmployee?.role === 'supervisor' 
+      ? (currentEmployee as Supervisor).supervised_store_id || '' 
+      : '',
+  }), [currentEmployee]);
 
   const methods = useForm<FormValuesProps>({
     resolver: yupResolver(EmployeeSchema),
@@ -100,8 +103,6 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
   const {
     reset,
     watch,
-    control,
-    setValue,
     handleSubmit,
     formState: { isSubmitting },
   } = methods;
@@ -109,34 +110,16 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
   const values = watch();
   const role = watch('role');
 
-  // Réinitialiser les champs de magasin quand le rôle change
-  useEffect(() => {
-    if (role === 'cashier') {
-      setValue('supervised_store_id', '');
-    } else if (role === 'supervisor') {
-      setValue('store_id', '');
-    }
-  }, [role, setValue]);
-
-  const prepareFormData = (data: FormValuesProps): EmployeeFormValues => {
-    return {
-      first_name: data.first_name,
-      last_name: data.last_name,
-      phone: data.phone,
-      email: data.email || undefined,
-      role: data.role as 'cashier' | 'supervisor',
-      is_active: Boolean(data.is_active),
-      store_id: data.role === 'cashier' ? data.store_id : undefined,
-      supervised_store_id: data.role === 'supervisor' ? data.supervised_store_id : undefined,
-    };
-  };
-
   const onSubmit = useCallback(
     async (data: FormValuesProps) => {
       try {
-        const formData = prepareFormData(data);
+        const formData: EmployeeFormValues = {
+          ...data,
+          // Ne pas envoyer le mot de passe s'il est vide (en cas d'édition)
+          password: data.password || undefined,
+        };
 
-        if (employeeId && currentEmployee) {
+        if (employeeId) {
           await employeeRequests.updateEmployee(employeeId, formData);
           enqueueSnackbar('Employé mis à jour avec succès !');
         } else {
@@ -152,7 +135,7 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
         );
       }
     },
-    [employeeId, enqueueSnackbar, router, currentEmployee]
+    [employeeId, enqueueSnackbar, router]
   );
 
   const handleDelete = useCallback(async () => {
@@ -166,10 +149,6 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
       enqueueSnackbar('Erreur lors de la suppression', { variant: 'error' });
     }
   }, [employeeId, enqueueSnackbar, router]);
-
-  if (employeeId && !currentEmployee) {
-    return <div>Chargement...</div>;
-  }
 
   return (
     <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
@@ -185,41 +164,33 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                 sm: 'repeat(2, 1fr)',
               }}
             >
-              <RHFTextField 
-                name="first_name" 
-                label="Prénom"
-              />
+              <RHFTextField name="first_name" label="Prénom" />
+              <RHFTextField name="last_name" label="Nom" />
+              <RHFTextField name="phone" label="Téléphone" />
+              <RHFTextField name="email" label="Email (optionnel)" />
 
-              <RHFTextField
-                name="last_name"
-                label="Nom"
-              />
-
-              <RHFTextField
-                name="phone"
-                label="Téléphone"
-                placeholder="Ex: 37491234"
-              />
-
-              <RHFTextField
-                name="email"
-                label="Email"
-                type="email"
-              />
-
-              <RHFSelect
-                name="role"
-                label="Rôle"
-              >
+              <RHFSelect name="role" label="Rôle">
                 <MenuItem value="cashier">Caissier</MenuItem>
                 <MenuItem value="supervisor">Superviseur</MenuItem>
               </RHFSelect>
 
+              {!employeeId && (
+                <RHFTextField
+                  name="password"
+                  label="Mot de passe"
+                  type="password"
+                  autoComplete="new-password"
+                />
+              )}
+
+              <RHFTextField
+                name="pin_code"
+                label="Code PIN (4 chiffres)"
+                inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
+              />
+
               {role === 'cashier' && (
-                <RHFSelect
-                  name="store_id"
-                  label="Magasin assigné"
-                >
+                <RHFSelect name="store_id" label="Magasin assigné">
                   <MenuItem value="">
                     <em>Sélectionnez un magasin</em>
                   </MenuItem>
@@ -232,10 +203,7 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
               )}
 
               {role === 'supervisor' && (
-                <RHFSelect
-                  name="supervised_store_id"
-                  label="Magasin supervisé"
-                >
+                <RHFSelect name="supervised_store_id" label="Magasin supervisé">
                   <MenuItem value="">
                     <em>Sélectionnez un magasin</em>
                   </MenuItem>
@@ -247,23 +215,7 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                 </RHFSelect>
               )}
 
-              <FormControlLabel
-                control={
-                  <Controller
-                    name="is_active"
-                    control={control}
-                    render={({ field }) => (
-                      <Switch
-                        {...field}
-                        checked={field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                      />
-                    )}
-                  />
-                }
-                label="Actif"
-                sx={{ mt: 1 }}
-              />
+              <RHFSwitch name="is_active" label="Actif" />
             </Box>
 
             <Stack direction="row" justifyContent="space-between" sx={{ mt: 3 }}>
@@ -271,7 +223,7 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                 <Button
                   color="error"
                   onClick={handleDelete}
-                  startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
+                  startIcon={<Iconify icon="eva:trash-2-outline" />}
                 >
                   Supprimer
                 </Button>
@@ -283,54 +235,40 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                 loading={isSubmitting}
                 size="large"
               >
-                {!currentEmployee ? 'Créer l\'employé' : 'Enregistrer les modifications'}
+                {employeeId ? 'Enregistrer' : 'Créer'}
               </LoadingButton>
             </Stack>
           </Card>
         </Grid>
 
-       <Grid xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Informations complémentaires
             </Typography>
-            <Typography variant="body2" sx={{ mb: 2 }} color="text.secondary">
-              {role === 'cashier'
-                ? 'Le caissier sera assigné au magasin sélectionné'
-                : 'Le superviseur supervisera le magasin sélectionné'}
-            </Typography>
 
-            {role === 'cashier' && values.store_id && (
+            {(values.store_id || values.supervised_store_id) && (
               <Box sx={{ mt: 1 }}>
-                <Typography variant="subtitle2">Magasin assigné:</Typography>
-                <Typography>
-                  {stores.find((store) => store.id === values.store_id)?.name || 'Non sélectionné'}
+                <Typography variant="subtitle2">
+                  {role === 'cashier' ? 'Magasin assigné:' : 'Magasin supervisé:'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stores.find((store) => store.id === values.store_id)?.contact.phone}
+                <Typography>
+                  {stores.find((s) => s.id === (values.store_id || values.supervised_store_id))?.name}
                 </Typography>
               </Box>
             )}
 
-            {role === 'supervisor' && values.supervised_store_id && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="subtitle2">Magasin supervisé:</Typography>
-                <Typography>
-                  {stores.find((store) => store.id === values.supervised_store_id)?.name || 'Non sélectionné'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stores.find((store) => store.id === values.supervised_store_id)?.contact.phone}
-                </Typography>
-              </Box>
-            )}
-
-            {currentEmployee?.role === role && (
+            {employeeId && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" display="block" color="text.secondary">
-                  Statut: {currentEmployee.is_active ? (
-                    <span style={{ color: 'green' }}>Actif</span>
+                <Typography variant="body2" color="text.secondary">
+                  Statut: {values.is_active ? (
+                    <Typography component="span" color="success.main">
+                      Actif
+                    </Typography>
                   ) : (
-                    <span style={{ color: 'red' }}>Inactif</span>
+                    <Typography component="span" color="error">
+                      Inactif
+                    </Typography>
                   )}
                 </Typography>
               </Box>
