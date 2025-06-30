@@ -289,16 +289,52 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
           </Card>
         </Grid>
 
-        <Grid xs={12} md={4}>
+       <Grid xs={12} md={4}>
           <Card sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Informations complémentaires
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {role === 'cashier' 
-                ? 'Le caissier sera assigné au magasin sélectionné' 
+            <Typography variant="body2" sx={{ mb: 2 }} color="text.secondary">
+              {role === 'cashier'
+                ? 'Le caissier sera assigné au magasin sélectionné'
                 : 'Le superviseur supervisera le magasin sélectionné'}
             </Typography>
+
+            {role === 'cashier' && values.store_id && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="subtitle2">Magasin assigné:</Typography>
+                <Typography>
+                  {stores.find((store) => store.id === values.store_id)?.name || 'Non sélectionné'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {stores.find((store) => store.id === values.store_id)?.contact.phone}
+                </Typography>
+              </Box>
+            )}
+
+            {role === 'supervisor' && values.supervised_store_id && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="subtitle2">Magasin supervisé:</Typography>
+                <Typography>
+                  {stores.find((store) => store.id === values.supervised_store_id)?.name || 'Non sélectionné'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {stores.find((store) => store.id === values.supervised_store_id)?.contact.phone}
+                </Typography>
+              </Box>
+            )}
+
+            {currentEmployee?.role === role && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" display="block" color="text.secondary">
+                  Statut: {currentEmployee.is_active ? (
+                    <span style={{ color: 'green' }}>Actif</span>
+                  ) : (
+                    <span style={{ color: 'red' }}>Inactif</span>
+                  )}
+                </Typography>
+              </Box>
+            )}
           </Card>
         </Grid>
       </Grid>
