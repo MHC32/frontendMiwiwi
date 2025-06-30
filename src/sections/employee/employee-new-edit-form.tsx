@@ -2,6 +2,7 @@ import * as Yup from 'yup';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useSelector, useDispatch } from 'src/redux/store';
 // @mui
 import LoadingButton from '@mui/lab/LoadingButton';
 import Box from '@mui/material/Box';
@@ -30,6 +31,8 @@ import FormProvider, {
 // requests
 import { employeeRequests } from 'src/utils/request';
 import MenuItem from '@mui/material/MenuItem';
+// redux
+import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
 
 // ----------------------------------------------------------------------
 
@@ -43,6 +46,13 @@ type Props = {
 export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Props) {
   const router = useRouter();
   const { enqueueSnackbar } = useSnackbar();
+  const dispatch = useDispatch();
+  const stores = useSelector(selectStores);
+
+  // Charger les magasins actifs au montage du composant
+  useEffect(() => {
+    dispatch(fetchStores({ is_active: true }));
+  }, [dispatch]);
 
   const EmployeeSchema = Yup.object().shape({
     first_name: Yup.string().required('Le prénom est requis'),
@@ -73,7 +83,9 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
       email: currentEmployee?.email || '',
       role: currentEmployee?.role || 'cashier',
       is_active: currentEmployee?.is_active ?? true,
-      store_id: currentEmployee?.role === 'cashier' ? (currentEmployee as Cashier).store_id || '' : '',
+      store_id: currentEmployee?.role === 'cashier' 
+        ? (currentEmployee as Cashier).store_id || '' 
+        : '',
       supervised_store_id: currentEmployee?.role === 'supervisor' 
         ? (currentEmployee as Supervisor).supervised_store_id || '' 
         : '',
@@ -97,24 +109,14 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
   const values = watch();
   const role = watch('role');
 
+  // Réinitialiser les champs de magasin quand le rôle change
   useEffect(() => {
-    if (currentEmployee) {
-      reset({
-        first_name: currentEmployee.first_name || '',
-        last_name: currentEmployee.last_name || '',
-        phone: currentEmployee.phone || '',
-        email: currentEmployee.email || '',
-        role: currentEmployee.role || 'cashier',
-        is_active: currentEmployee.is_active ?? true,
-        store_id: currentEmployee.role === 'cashier' 
-          ? (currentEmployee as Cashier).store_id || '' 
-          : '',
-        supervised_store_id: currentEmployee.role === 'supervisor' 
-          ? (currentEmployee as Supervisor).supervised_store_id || '' 
-          : '',
-      });
+    if (role === 'cashier') {
+      setValue('supervised_store_id', '');
+    } else if (role === 'supervisor') {
+      setValue('store_id', '');
     }
-  }, [currentEmployee, reset]);
+  }, [role, setValue]);
 
   const prepareFormData = (data: FormValuesProps): EmployeeFormValues => {
     return {
@@ -214,21 +216,67 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
               </RHFSelect>
 
               {role === 'cashier' && (
-                <RHFTextField
+                <RHFSelect
                   name="store_id"
                   label="Magasin assigné"
-                />
+                >
+                  <MenuItem value="">
+                    <em>Sélectionnez un magasin</em>
+                  </MenuItem>
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.name}
+                    </MenuItem>
+                  ))}
+                </RHFSelect>
               )}
 
               {role === 'supervisor' && (
-                <RHFTextField
+                <RHFSelect
                   name="supervised_store_id"
                   label="Magasin supervisé"
-                />
+                >
+                  <MenuItem value="">
+                    <em>Sélectionnez un magasin</em>
+                  </MenuItem>
+                  {stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.name}
+                    </MenuItem>
+                  ))}
+                </RHFSelect>
               )}
+
+              <FormControlLabel
+                control={
+                  <Controller
+                    name="is_active"
+                    control={control}
+                    render={({ field }) => (
+                      <Switch
+                        {...field}
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    )}
+                  />
+                }
+                label="Actif"
+                sx={{ mt: 1 }}
+              />
             </Box>
 
-            <Stack alignItems="flex-end" sx={{ mt: 3 }}>
+            <Stack direction="row" justifyContent="space-between" sx={{ mt: 3 }}>
+              {employeeId && (
+                <Button
+                  color="error"
+                  onClick={handleDelete}
+                  startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}
+                >
+                  Supprimer
+                </Button>
+              )}
+
               <LoadingButton
                 type="submit"
                 variant="contained"
@@ -238,6 +286,19 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                 {!currentEmployee ? 'Créer l\'employé' : 'Enregistrer les modifications'}
               </LoadingButton>
             </Stack>
+          </Card>
+        </Grid>
+
+        <Grid xs={12} md={4}>
+          <Card sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Informations complémentaires
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {role === 'cashier' 
+                ? 'Le caissier sera assigné au magasin sélectionné' 
+                : 'Le superviseur supervisera le magasin sélectionné'}
+            </Typography>
           </Card>
         </Grid>
       </Grid>
