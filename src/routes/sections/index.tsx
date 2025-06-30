@@ -18,6 +18,11 @@ const ListStore = lazy(()=> import('src/pages/dashboard/store/list'))
 const EditStore = lazy(()=> import('src/pages/dashboard/store/edit'))
 const NewStore = lazy(()=> import('src/pages/dashboard/store/create'))
 
+// EMPLOYEE
+const ListEmployee = lazy(()=> import('src/pages/dashboard/employee/list'))
+const EditEmployee = lazy(()=> import('src/pages/dashboard/employee/edit'))
+const NewEmployee = lazy(()=> import('src/pages/dashboard/employee/create'))
+
 // OVERVIEW
 const IndexPage = lazy(() => import('src/pages/dashboard/app'));
 const OverviewAnalyticsPage = lazy(() => import('src/pages/dashboard/analytics'));
@@ -87,6 +92,16 @@ export default function Router() {
             { path: 'list', element: <ListStore /> },
             { path: 'edit/:id', element: <EditStore /> },
             { path: 'new', element: <NewStore /> } 
+          ],
+        },
+
+         {
+          path: 'employee',
+          children: [
+            { element: <ListEmployee />, index: true },
+            { path: 'list', element: <ListEmployee /> },
+            { path: 'edit/:id', element: <EditEmployee /> },
+            { path: 'new', element: <NewEmployee /> } 
           ],
         },
 

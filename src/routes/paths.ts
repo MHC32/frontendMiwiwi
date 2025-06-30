@@ -107,6 +107,13 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/store/list`, // Chemin distinct
       new: `${ROOTS.DASHBOARD}/store/new`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/store/edit/${id}`
+    },
+
+    employee: {
+      root: `${ROOTS.DASHBOARD}/employee`,
+      list: `${ROOTS.DASHBOARD}/employee/list`, // Chemin distinct
+      new: `${ROOTS.DASHBOARD}/employee/new`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/employee/edit/${id}`
     }
   },
 };

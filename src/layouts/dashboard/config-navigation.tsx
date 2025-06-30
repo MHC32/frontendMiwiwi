@@ -87,6 +87,17 @@ export function useNavData() {
               { title: 'Liste Magasin', path: paths.dashboard.store.list },
             ],
             
+          },
+
+          {
+            title: 'Employer',
+            path: paths.dashboard.employee.root,
+            icon: ICONS.job,
+            children: [
+              { title: 'Ajouter Employer', path: paths.dashboard.employee.new },
+              { title: 'Liste Employer', path: paths.dashboard.employee.list },
+            ],
+            
           }
           
         ],

@@ -1,6 +1,7 @@
 import axios from 'src/utils/axios';
 import type { ICompanyItem } from 'src/types/company';
 import type { IStoreItem, StoreFormValues, StoreListResponse } from 'src/types/store';
+import type { EmployeeRole,Cashier, Supervisor, EmployeeFormValues, EmployeeListResponse } from 'src/types/employee';
 
 type LoginCredentials = {
   phone: string;
@@ -224,4 +225,96 @@ export const storeRequests = {
     const response = await axios.patch(`/api/owner/stores/${id}/deactivate`);
     return response.data;
   },
+};
+
+
+
+
+export const employeeRequests = {
+  // Créer un nouvel employé (cashier ou supervisor)
+  createEmployee: async (employeeData: EmployeeFormValues): Promise<Cashier | Supervisor> => {
+    const formData = new FormData();
+    
+    // Champs obligatoires
+    formData.append('first_name', employeeData.first_name);
+    formData.append('last_name', employeeData.last_name);
+    formData.append('phone', employeeData.phone);
+    formData.append('role', employeeData.role);
+    formData.append('password', employeeData.password || ''); // Mot de passe temporaire
+    
+    // Champs conditionnels
+    if (employeeData.email) formData.append('email', employeeData.email);
+    if (employeeData.pin_code) formData.append('pin_code', employeeData.pin_code);
+    
+    // Gestion spécifique au rôle
+    if (employeeData.role === 'cashier' && employeeData.store_id) {
+      formData.append('storeIds[]', employeeData.store_id);
+    } else if (employeeData.role === 'supervisor' && employeeData.supervised_store_id) {
+      formData.append('storeIds[]', employeeData.supervised_store_id);
+    }
+
+    const response = await axios.post('/api/owner/employees', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Mettre à jour un employé existant
+  updateEmployee: async (id: string, employeeData: Partial<EmployeeFormValues>): Promise<Cashier | Supervisor> => {
+    const formData = new FormData();
+    
+    // Champs modifiables
+    if (employeeData.first_name) formData.append('first_name', employeeData.first_name);
+    if (employeeData.last_name) formData.append('last_name', employeeData.last_name);
+    if (employeeData.phone) formData.append('phone', employeeData.phone);
+    if (employeeData.email) formData.append('email', employeeData.email);
+    if (employeeData.role) formData.append('role', employeeData.role);
+    if (employeeData.pin_code) formData.append('pin_code', employeeData.pin_code);
+    
+    // Gestion spécifique au rôle
+    if (employeeData.role === 'cashier' && employeeData.store_id) {
+      formData.append('storeIds[]', employeeData.store_id);
+    } else if (employeeData.role === 'supervisor' && employeeData.supervised_store_id) {
+      formData.append('storeIds[]', employeeData.supervised_store_id);
+    }
+
+    const response = await axios.patch(`/api/owner/employees/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Lister les employés avec pagination et filtres
+  getEmployees: async (params?: {
+    page?: number;
+    limit?: number;
+    storeId?: string;
+    role?: EmployeeRole;
+    is_active?: boolean;
+  }): Promise<EmployeeListResponse> => {
+    const response = await axios.get('/api/owner/employees', { params });
+    return response.data;
+  },
+
+  // Obtenir les détails d'un employé spécifique
+  getEmployeeDetails: async (id: string): Promise<Cashier | Supervisor> => {
+    const response = await axios.get(`/api/owner/employees/${id}`);
+    return response.data;
+  },
+
+  // Activer/désactiver un employé
+ toggleEmployeeStatus: async (id: string, activate: boolean): Promise<Cashier | Supervisor> => {
+  const endpoint = activate ? 'activate' : 'deactivate';
+  const response = await axios.patch(`/api/owner/employees/${id}/${endpoint}`);
+  return response.data; // Retourne l'employé mis à jour
+},
+
+  // Supprimer un employé
+  deleteEmployee: async (id: string): Promise<void> => {
+    await axios.delete(`/api/owner/employees/${id}`);
+  }
 };

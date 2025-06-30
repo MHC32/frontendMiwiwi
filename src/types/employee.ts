@@ -1,4 +1,6 @@
 export type EmployeeRole = 'cashier' | 'supervisor';
+export type EmployeeStatusFilter = 'active' | 'inactive' | 'all';
+export type EmployeeRoleFilter = 'cashier' | 'supervisor' | 'all';
 
 export interface IEmployeeBase {
   id: string;
@@ -44,6 +46,7 @@ export type EmployeeFormValues = {
   supervised_store_id?: string; // Pour supervisor
   pin_code?: string;
   is_active?: boolean;
+  password?: string;
 };
 
 // Pour les réponses API
@@ -55,4 +58,29 @@ export type EmployeeListResponse = {
     limit: number;
     totalPages: number;
   };
+};
+
+
+export interface IEmployeeTableFilters {
+  is_active: EmployeeStatusFilter;
+  name: string;
+  role: EmployeeRoleFilter;
+  store_id: string[];
+  query?: string; // Optionnel: pour la recherche globale
+}
+
+export type IEmployeeTableFilterValue = 
+  | string 
+  | string[] 
+  | EmployeeStatusFilter 
+  | EmployeeRoleFilter;
+
+// Pour les paramètres de requête API
+export type EmployeeQueryParams = {
+  page?: number;
+  limit?: number;
+  role?: EmployeeRole;
+  is_active?: boolean;
+  store_id?: string;
+  query?: string;
 };

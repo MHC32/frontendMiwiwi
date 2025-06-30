@@ -9,6 +9,7 @@ import calendarReducer from './slices/calendar';
 import authReducer from './slices/auth.slice';
 import companyReducer from './slices/companySlice';
 import storeReducer from './slices/store.slice';
+import employeeReducer from './slices/employee.slice'
 // ----------------------------------------------------------------------
 
 export const rootPersistConfig = {
@@ -41,4 +42,6 @@ export const rootReducer = combineReducers({
   product: persistReducer(productPersistConfig, productReducer),
   company: companyReducer,
   store: storeReducer,
+  employee: employeeReducer
+  
 });
