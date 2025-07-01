@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
@@ -38,7 +39,7 @@ export default function EmployeeTableRow({
   onDeleteRow,
   onToggleStatus,
 }: Props) {
-  const { first_name, last_name, phone, email, is_active, role, store_id, supervised_store_id } = row;
+  const { _id,first_name, last_name, phone, email, is_active, role, store_id, supervised_store_id } = row;
 
   const confirm = useBoolean();
   const quickEdit = useBoolean();
@@ -49,6 +50,7 @@ export default function EmployeeTableRow({
   const storeInfo = role === 'cashier' 
     ? `Magasin: ${store_id || 'Non assigné'}` 
     : `Supervise: ${supervised_store_id || 'Aucun magasin'}`;
+    console.log('men row', row )
 
   return (
     <>

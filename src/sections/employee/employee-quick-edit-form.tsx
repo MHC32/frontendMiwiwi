@@ -1,5 +1,5 @@
 import * as Yup from 'yup';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 // @mui
@@ -11,13 +11,17 @@ import MenuItem from '@mui/material/MenuItem';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
+import { useSelector, useDispatch } from 'src/redux/store';
 // types
-import { Cashier, Supervisor, EmployeeFormValues, EmployeeRole } from 'src/types/employee';
+import { Cashier, Supervisor, EmployeeFormValues, EmployeeRole, } from 'src/types/employee';
 // components
 import { useSnackbar } from 'src/components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect, RHFSwitch } from 'src/components/hook-form';
 // requests
 import { employeeRequests } from 'src/utils/request';
+
+// redux
+import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
 
 // ----------------------------------------------------------------------
 
@@ -25,10 +29,23 @@ type Props = {
   open: boolean;
   onClose: VoidFunction;
   currentEmployee?: Cashier | Supervisor;
+  onSuccess?: VoidFunction;
 };
 
-export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }: Props) {
+export default function EmployeeQuickEditForm({ 
+  currentEmployee, 
+  open, 
+  onClose, 
+  onSuccess 
+}: Props) {
   const { enqueueSnackbar } = useSnackbar();
+  const dispatch = useDispatch();
+  const stores = useSelector(selectStores);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchStores({ is_active: true }));
+  }, [dispatch]);
 
   const EmployeeSchema = Yup.object().shape({
     first_name: Yup.string().required('Le prénom est requis'),
@@ -58,10 +75,12 @@ export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }
       phone: currentEmployee?.phone || '',
       email: currentEmployee?.email || '',
       role: currentEmployee?.role || 'cashier',
-      is_active: currentEmployee?.is_active || false,
-      store_id: currentEmployee?.role === 'cashier' ? (currentEmployee as Cashier).store_id || '' : '',
-      supervised_store_id: currentEmployee?.role === 'supervisor' 
-        ? (currentEmployee as Supervisor).supervised_store_id || '' 
+      is_active: currentEmployee?.is_active ?? true,
+      store_id: currentEmployee?.role === 'cashier' 
+        ? (currentEmployee as Cashier).store_id || '' 
+        : '',
+      supervised_store_id: currentEmployee?.role === 'supervisor'
+        ? (currentEmployee as Supervisor).supervised_store_id || ''
         : '',
     }),
     [currentEmployee]
@@ -83,12 +102,15 @@ export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }
 
   const onSubmit = useCallback(
     async (data: EmployeeFormValues) => {
+      setIsLoading(true);
       try {
-        if (!currentEmployee?.id) {
+        const idToUpdate = currentEmployee?._id;
+        
+        if (!idToUpdate) {
           throw new Error('ID de l\'employé non défini');
         }
-        
-        await employeeRequests.updateEmployee(currentEmployee.id, {
+
+        await employeeRequests.updateEmployee(idToUpdate, {
           first_name: data.first_name,
           last_name: data.last_name,
           phone: data.phone,
@@ -98,27 +120,36 @@ export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }
           ...(data.role === 'cashier' ? { store_id: data.store_id } : {}),
           ...(data.role === 'supervisor' ? { supervised_store_id: data.supervised_store_id } : {}),
         });
-        
+
         reset();
         onClose();
-        enqueueSnackbar('Employé mis à jour avec succès !');
+        enqueueSnackbar('Employé mis à jour avec succès !', { variant: 'success' });
+        onSuccess?.();
       } catch (error) {
-        console.error(error);
-        enqueueSnackbar(
-          error instanceof Error ? error.message : 'Erreur lors de la mise à jour',
-          { variant: 'error' }
-        );
+        console.error('Erreur mise à jour employé:', error);
+        const errorMessage = error.response?.data?.message 
+          || error.message 
+          || 'Erreur lors de la mise à jour';
+        enqueueSnackbar(errorMessage, { variant: 'error' });
+      } finally {
+        setIsLoading(false);
       }
     },
-    [currentEmployee?.id, enqueueSnackbar, onClose, reset]
+    [currentEmployee?._id, enqueueSnackbar, onClose, reset, onSuccess]
   );
 
+  const handleClose = useCallback(() => {
+    reset();
+    onClose();
+  }, [onClose, reset]);
+
+console.log('men currentEmployee ', currentEmployee)
   return (
     <Dialog
       fullWidth
       maxWidth={false}
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       PaperProps={{
         sx: { maxWidth: 720 },
       }}
@@ -163,17 +194,37 @@ export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }
             </RHFSelect>
 
             {role === 'cashier' && (
-              <RHFTextField
-                name="store_id"
+              <RHFSelect 
+                name="store_id" 
                 label="Magasin assigné"
-              />
+                disabled={isLoading}
+              >
+                <MenuItem value="">
+                  <em>Sélectionnez un magasin</em>
+                </MenuItem>
+                {stores.map((store) => (
+                  <MenuItem key={store.id} value={store.id}>
+                    {store.name}
+                  </MenuItem>
+                ))}
+              </RHFSelect>
             )}
 
             {role === 'supervisor' && (
-              <RHFTextField
-                name="supervised_store_id"
+              <RHFSelect 
+                name="supervised_store_id" 
                 label="Magasin supervisé"
-              />
+                disabled={isLoading}
+              >
+                <MenuItem value="">
+                  <em>Sélectionnez un magasin</em>
+                </MenuItem>
+                {stores.map((store) => (
+                  <MenuItem key={store.id} value={store.id}>
+                    {store.name}
+                  </MenuItem>
+                ))}
+              </RHFSelect>
             )}
 
             <RHFSwitch
@@ -181,19 +232,24 @@ export default function EmployeeQuickEditForm({ currentEmployee, open, onClose }
               label="Statut"
               labelPlacement="start"
               sx={{ justifyContent: 'space-between' }}
+              disabled={isLoading}
             />
           </Box>
         </DialogContent>
 
         <DialogActions>
-          <Button variant="outlined" onClick={onClose}>
+          <Button 
+            variant="outlined" 
+            onClick={handleClose}
+            disabled={isLoading}
+          >
             Annuler
           </Button>
 
-          <LoadingButton 
-            type="submit" 
-            variant="contained" 
-            loading={isSubmitting}
+          <LoadingButton
+            type="submit"
+            variant="contained"
+            loading={isSubmitting || isLoading}
           >
             Enregistrer
           </LoadingButton>

@@ -62,17 +62,17 @@ const employeeSlice = createSlice({
     updateEmployeeSuccess(state, action: PayloadAction<Employee>) {
       state.isLoading = false;
       state.employees = state.employees.map(emp =>
-        emp.id === action.payload.id ? action.payload : emp
+        emp._id === action.payload._id ? action.payload : emp
       );
-      if (state.currentEmployee?.id === action.payload.id) {
+      if (state.currentEmployee?._id === action.payload._id) {
         state.currentEmployee = action.payload;
       }
     },
     deleteEmployeeSuccess(state, action: PayloadAction<string>) {
       state.isLoading = false;
-      state.employees = state.employees.filter(emp => emp.id !== action.payload);
+      state.employees = state.employees.filter(emp => emp._id !== action.payload);
       state.pagination.total -= 1;
-      if (state.currentEmployee?.id === action.payload) {
+      if (state.currentEmployee?._id === action.payload) {
         state.currentEmployee = null;
       }
     },
@@ -80,9 +80,9 @@ const employeeSlice = createSlice({
       state.isLoading = false;
       const updatedEmployee = action.payload;
       state.employees = state.employees.map(emp =>
-        emp.id === updatedEmployee.id ? updatedEmployee : emp
+        emp._id === updatedEmployee._id ? updatedEmployee : emp
       );
-      if (state.currentEmployee?.id === updatedEmployee.id) {
+      if (state.currentEmployee?._id === updatedEmployee._id) {
         state.currentEmployee = updatedEmployee;
       }
     },
@@ -207,7 +207,7 @@ export const selectEmployeeLoading = (state: { employee: EmployeeState }) => sta
 export const selectEmployeeError = (state: { employee: EmployeeState }) => state.employee.error;
 export const selectEmployeePagination = (state: { employee: EmployeeState }) => state.employee.pagination;
 export const selectEmployeeById = (id: string) => (state: { employee: EmployeeState }) => 
-  state.employee.employees.find(emp => emp.id === id);
+  state.employee.employees.find(emp => emp._id === id);
 
 // Filtres spécifiques
 export const selectCashiers = (state: { employee: EmployeeState }) => 

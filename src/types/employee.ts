@@ -3,7 +3,7 @@ export type EmployeeStatusFilter = 'active' | 'inactive' | 'all';
 export type EmployeeRoleFilter = 'cashier' | 'supervisor' | 'all';
 
 export interface IEmployeeBase {
-  id: string;
+  _id: string;
   first_name: string;
   last_name: string;
   phone: string;

@@ -120,14 +120,14 @@ export default function EmployeeListView() {
     try {
       // Mise à jour optimiste
       setTableData(prev => prev.map(employee => 
-        employee.id === id ? { ...employee, is_active: !currentStatus } : employee
+        employee._id === id ? { ...employee, is_active: !currentStatus } : employee
       ));
 
       const response = await employeeRequests.toggleEmployeeStatus(id, !currentStatus);
       
       // Mise à jour avec les données du serveur
       setTableData(prev => prev.map(employee => 
-        employee.id === id ? response : employee
+        employee._id === id ? response : employee
       ));
       
       enqueueSnackbar(`Employé ${currentStatus ? 'désactivé' : 'activé'} avec succès`, {
@@ -136,7 +136,7 @@ export default function EmployeeListView() {
     } catch (error) {
       // Annuler la modification optimiste en cas d'erreur
       setTableData(prev => prev.map(employee => 
-        employee.id === id ? { ...employee, is_active: currentStatus } : employee
+        employee._id === id ? { ...employee, is_active: currentStatus } : employee
       ));
       
       console.error('Failed to toggle employee status:', error);
@@ -366,7 +366,7 @@ export default function EmployeeListView() {
               onSelectAllRows={(checked) =>
                 table.onSelectAllRows(
                   checked,
-                  tableData.map((row) => row.id)
+                  tableData.map((row) => row._id)
                 )
               }
               action={
@@ -390,7 +390,7 @@ export default function EmployeeListView() {
                   onSelectAllRows={(checked) =>
                     table.onSelectAllRows(
                       checked,
-                      tableData.map((row) => row.id)
+                      tableData.map((row) => row._id)
                     )
                   }
                 />
@@ -403,13 +403,13 @@ export default function EmployeeListView() {
                     )
                     .map((row) => (
                       <EmployeeTableRow
-                        key={row.id}
+                        key={row._id}
                         row={row}
-                        selected={table.selected.includes(row.id)}
-                        onSelectRow={() => table.onSelectRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        onEditRow={() => handleEditRow(row.id)}
-                        onToggleStatus={() => handleToggleStatus(row.id, row.is_active)}
+                        selected={table.selected.includes(row._id)}
+                        onSelectRow={() => table.onSelectRow(row._id)}
+                        onDeleteRow={() => handleDeleteRow(row._id)}
+                        onEditRow={() => handleEditRow(row._id)}
+                        onToggleStatus={() => handleToggleStatus(row._id, row.is_active)}
                       />
                     ))}
 
