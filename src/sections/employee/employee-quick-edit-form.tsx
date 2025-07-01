@@ -13,13 +13,12 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import { useSelector, useDispatch } from 'src/redux/store';
 // types
-import { Cashier, Supervisor, EmployeeFormValues, EmployeeRole, } from 'src/types/employee';
+import { Employee, EmployeeFormValues, EmployeeRole } from 'src/types/employee';
 // components
 import { useSnackbar } from 'src/components/snackbar';
 import FormProvider, { RHFTextField, RHFSelect, RHFSwitch } from 'src/components/hook-form';
 // requests
 import { employeeRequests } from 'src/utils/request';
-
 // redux
 import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
 
@@ -28,7 +27,7 @@ import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
 type Props = {
   open: boolean;
   onClose: VoidFunction;
-  currentEmployee?: Cashier | Supervisor;
+  currentEmployee?: Employee;
   onSuccess?: VoidFunction;
 };
 
@@ -52,7 +51,7 @@ export default function EmployeeQuickEditForm({
     last_name: Yup.string().required('Le nom est requis'),
     phone: Yup.string()
       .required('Le téléphone est requis')
-      .matches(/^[0-9]{8,15}$/, 'Numéro de téléphone invalide'),
+      .matches(/^\+?[0-9]{8,15}$/, 'Numéro de téléphone invalide'),
     email: Yup.string().email('Email invalide').optional(),
     role: Yup.string().required('Le rôle est requis'),
     is_active: Yup.boolean(),
@@ -68,23 +67,32 @@ export default function EmployeeQuickEditForm({
     }),
   });
 
-  const defaultValues = useMemo<EmployeeFormValues>(
-    () => ({
+  const defaultValues = useMemo<EmployeeFormValues>(() => {
+    const getStoreId = () => {
+      if (currentEmployee?.role === 'cashier' && currentEmployee.stores.length > 0) {
+        return currentEmployee.stores[0]._id;
+      }
+      return '';
+    };
+
+    const getSupervisedStoreId = () => {
+      if (currentEmployee?.role === 'supervisor' && currentEmployee.supervisedStore) {
+        return currentEmployee.supervisedStore._id;
+      }
+      return '';
+    };
+
+    return {
       first_name: currentEmployee?.first_name || '',
       last_name: currentEmployee?.last_name || '',
       phone: currentEmployee?.phone || '',
       email: currentEmployee?.email || '',
       role: currentEmployee?.role || 'cashier',
       is_active: currentEmployee?.is_active ?? true,
-      store_id: currentEmployee?.role === 'cashier' 
-        ? (currentEmployee as Cashier).store_id || '' 
-        : '',
-      supervised_store_id: currentEmployee?.role === 'supervisor'
-        ? (currentEmployee as Supervisor).supervised_store_id || ''
-        : '',
-    }),
-    [currentEmployee]
-  );
+      store_id: getStoreId(),
+      supervised_store_id: getSupervisedStoreId(),
+    };
+  }, [currentEmployee]);
 
   const methods = useForm<EmployeeFormValues>({
     resolver: yupResolver(EmployeeSchema),
@@ -104,28 +112,28 @@ export default function EmployeeQuickEditForm({
     async (data: EmployeeFormValues) => {
       setIsLoading(true);
       try {
-        const idToUpdate = currentEmployee?._id;
-        
-        if (!idToUpdate) {
+        if (!currentEmployee?._id) {
           throw new Error('ID de l\'employé non défini');
         }
 
-        await employeeRequests.updateEmployee(idToUpdate, {
+        const payload = {
           first_name: data.first_name,
           last_name: data.last_name,
           phone: data.phone,
           email: data.email,
           role: data.role as EmployeeRole,
           is_active: data.is_active,
-          ...(data.role === 'cashier' ? { store_id: data.store_id } : {}),
-          ...(data.role === 'supervisor' ? { supervised_store_id: data.supervised_store_id } : {}),
-        });
+          ...(data.role === 'cashier' && { store_id: data.store_id }),
+          ...(data.role === 'supervisor' && { supervised_store_id: data.supervised_store_id }),
+        };
+
+        await employeeRequests.updateEmployee(currentEmployee._id, payload);
 
         reset();
         onClose();
         enqueueSnackbar('Employé mis à jour avec succès !', { variant: 'success' });
         onSuccess?.();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erreur mise à jour employé:', error);
         const errorMessage = error.response?.data?.message 
           || error.message 
@@ -143,7 +151,6 @@ export default function EmployeeQuickEditForm({
     onClose();
   }, [onClose, reset]);
 
-console.log('men currentEmployee ', currentEmployee)
   return (
     <Dialog
       fullWidth
@@ -175,7 +182,7 @@ console.log('men currentEmployee ', currentEmployee)
             <RHFTextField
               name="phone"
               label="Téléphone"
-              placeholder="Ex: 37491234"
+              placeholder="Ex: +50937491234"
             />
 
             <RHFTextField

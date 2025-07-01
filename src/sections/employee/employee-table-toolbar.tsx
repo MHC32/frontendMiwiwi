@@ -11,17 +11,22 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 // types
-import { IEmployeeTableFilters, IEmployeeTableFilterValue } from 'src/types/employee';
+import { IEmployeeTableFilters, IEmployeeTableFilterValue, EmployeeRoleFilter, EmployeeStatusFilter } from 'src/types/employee';
 // components
 import Iconify from 'src/components/iconify';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 
 // ----------------------------------------------------------------------
 
+type StoreOption = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   filters: IEmployeeTableFilters;
   onFilters: (name: string, value: IEmployeeTableFilterValue) => void;
-  storeOptions: string[];
+  storeOptions: StoreOption[];
   onRefresh: () => void;
 };
 
@@ -51,15 +56,15 @@ export default function EmployeeTableToolbar({
   );
 
   const handleFilterStatus = useCallback(
-    (event: SelectChangeEvent<IEmployeeTableFilterValue>) => {
-      onFilters('is_active', event.target.value as string);
+    (event: SelectChangeEvent<EmployeeStatusFilter>) => {
+      onFilters('is_active', event.target.value as EmployeeStatusFilter);
     },
     [onFilters]
   );
 
   const handleFilterRole = useCallback(
-    (event: SelectChangeEvent<IEmployeeTableFilterValue>) => {
-      onFilters('role', event.target.value as string);
+    (event: SelectChangeEvent<EmployeeRoleFilter>) => {
+      onFilters('role', event.target.value as EmployeeRoleFilter);
     },
     [onFilters]
   );
@@ -78,6 +83,7 @@ export default function EmployeeTableToolbar({
           pr: { xs: 2.5, md: 1 },
         }}
       >
+        {/* Magasin Select */}
         <FormControl
           sx={{
             flexShrink: 0,
@@ -90,22 +96,32 @@ export default function EmployeeTableToolbar({
             value={filters.store_id}
             onChange={handleFilterStore}
             input={<OutlinedInput label="Magasin" />}
-            renderValue={(selected) => selected.join(', ')}
+            renderValue={(selected) => {
+              const selectedStores = selected.map(id => 
+                storeOptions.find(store => store.id === id)?.name || id
+              );
+              return selectedStores.join(', ');
+            }}
             MenuProps={{
               PaperProps: {
                 sx: { maxHeight: 240 },
               },
             }}
           >
-            {storeOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                <Checkbox disableRipple size="small" checked={filters.store_id.includes(option)} />
-                {option}
+            {storeOptions.map((store) => (
+              <MenuItem key={store.id} value={store.id}>
+                <Checkbox 
+                  disableRipple 
+                  size="small" 
+                  checked={filters.store_id.includes(store.id)} 
+                />
+                {store.name}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
 
+        {/* Rôle Select */}
         <FormControl
           sx={{
             flexShrink: 0,
@@ -124,6 +140,7 @@ export default function EmployeeTableToolbar({
           </Select>
         </FormControl>
 
+        {/* Statut Select */}
         <FormControl
           sx={{
             flexShrink: 0,
@@ -142,6 +159,7 @@ export default function EmployeeTableToolbar({
           </Select>
         </FormControl>
 
+        {/* Search Field */}
         <Stack direction="row" alignItems="center" spacing={2} flexGrow={1} sx={{ width: 1 }}>
           <TextField
             fullWidth
@@ -167,6 +185,7 @@ export default function EmployeeTableToolbar({
         </Stack>
       </Stack>
 
+      {/* Options Popover */}
       <CustomPopover
         open={popover.open}
         onClose={popover.onClose}

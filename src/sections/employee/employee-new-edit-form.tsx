@@ -16,7 +16,13 @@ import MenuItem from '@mui/material/MenuItem';
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hook';
 // types
-import { Cashier, Supervisor, EmployeeFormValues } from 'src/types/employee';
+import { 
+  Employee, 
+  EmployeeFormValues, 
+  isCashier, 
+  isSupervisor,
+  getEmployeeStores 
+} from 'src/types/employee';
 // components
 import { useSnackbar } from 'src/components/snackbar';
 import FormProvider, {
@@ -24,18 +30,18 @@ import FormProvider, {
   RHFSelect,
   RHFSwitch,
 } from 'src/components/hook-form';
-// requests
-import { employeeRequests } from 'src/utils/request';
 // redux
 import { selectStores, fetchStores } from 'src/redux/slices/store.slice';
+import { updateEmployee, createEmployee, deleteEmployee } from 'src/redux/slices/employee.slice';
 
 import Iconify from 'src/components/iconify';
+
 // ----------------------------------------------------------------------
 
 interface FormValuesProps extends EmployeeFormValues {}
 
 type Props = {
-  currentEmployee?: Cashier | Supervisor | null;
+  currentEmployee?: Employee | null;
   employeeId?: string;
 };
 
@@ -78,6 +84,25 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
     }),
   });
 
+  // Helper pour extraire les IDs de magasins
+  const getStoreIdFromEmployee = useCallback((employee: Employee): string => {
+    if (isCashier(employee)) {
+      // Pour les caissiers, prendre le premier magasin assigné
+      return employee.stores.length > 0 ? employee.stores[0]._id : '';
+    } else if (isSupervisor(employee)) {
+      // Pour les superviseurs, prendre le magasin supervisé
+      return employee.supervisedStore?._id || '';
+    }
+    return '';
+  }, []);
+
+  const getSupervisedStoreIdFromEmployee = useCallback((employee: Employee): string => {
+    if (isSupervisor(employee)) {
+      return employee.supervisedStore?._id || '';
+    }
+    return '';
+  }, []);
+
   const defaultValues = useMemo<FormValuesProps>(() => ({
     first_name: currentEmployee?.first_name || '',
     last_name: currentEmployee?.last_name || '',
@@ -85,15 +110,15 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
     email: currentEmployee?.email || '',
     role: currentEmployee?.role || 'cashier',
     password: '',
-    pin_code: currentEmployee?.pin_code || '',
+    pin_code: currentEmployee?.pin_code?.toString() || '',
     is_active: currentEmployee?.is_active ?? true,
-    store_id: currentEmployee?.role === 'cashier' 
-      ? (currentEmployee as Cashier).store_id || '' 
+    store_id: currentEmployee && isCashier(currentEmployee) 
+      ? getStoreIdFromEmployee(currentEmployee)
       : '',
-    supervised_store_id: currentEmployee?.role === 'supervisor' 
-      ? (currentEmployee as Supervisor).supervised_store_id || '' 
+    supervised_store_id: currentEmployee && isSupervisor(currentEmployee) 
+      ? getSupervisedStoreIdFromEmployee(currentEmployee)
       : '',
-  }), [currentEmployee]);
+  }), [currentEmployee, getStoreIdFromEmployee, getSupervisedStoreIdFromEmployee]);
 
   const methods = useForm<FormValuesProps>({
     resolver: yupResolver(EmployeeSchema),
@@ -120,10 +145,10 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
         };
 
         if (employeeId) {
-          await employeeRequests.updateEmployee(employeeId, formData);
+          await dispatch(updateEmployee(employeeId, formData));
           enqueueSnackbar('Employé mis à jour avec succès !');
         } else {
-          await employeeRequests.createEmployee(formData);
+          await dispatch(createEmployee(formData));
           enqueueSnackbar('Employé créé avec succès !');
         }
         router.push(paths.dashboard.employee.list);
@@ -135,20 +160,32 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
         );
       }
     },
-    [employeeId, enqueueSnackbar, router]
+    [employeeId, enqueueSnackbar, router, dispatch]
   );
 
   const handleDelete = useCallback(async () => {
     try {
       if (!employeeId) return;
-      await employeeRequests.deleteEmployee(employeeId);
+      await dispatch(deleteEmployee(employeeId));
       enqueueSnackbar('Employé supprimé avec succès');
       router.push(paths.dashboard.employee.list);
     } catch (error) {
       console.error(error);
       enqueueSnackbar('Erreur lors de la suppression', { variant: 'error' });
     }
-  }, [employeeId, enqueueSnackbar, router]);
+  }, [employeeId, enqueueSnackbar, router, dispatch]);
+
+  // Helper pour obtenir le nom du magasin sélectionné
+  const getSelectedStoreName = useCallback((storeId: string): string => {
+    const store = stores.find((s) => s.id === storeId);
+    return store?.name || '';
+  }, [stores]);
+
+  // Helper pour obtenir les magasins de l'employé actuel
+  const getCurrentEmployeeStores = useCallback((): string[] => {
+    if (!currentEmployee) return [];
+    return getEmployeeStores(currentEmployee).map(store => store.name);
+  }, [currentEmployee]);
 
   return (
     <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
@@ -253,8 +290,22 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                   {role === 'cashier' ? 'Magasin assigné:' : 'Magasin supervisé:'}
                 </Typography>
                 <Typography>
-                  {stores.find((s) => s.id === (values.store_id || values.supervised_store_id))?.name}
+                  {getSelectedStoreName(values.store_id || values.supervised_store_id || '')}
                 </Typography>
+              </Box>
+            )}
+
+            {/* Afficher les magasins actuels de l'employé en mode édition */}
+            {employeeId && currentEmployee && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2">
+                  Magasin(s) actuel(s):
+                </Typography>
+                {getCurrentEmployeeStores().map((storeName, index) => (
+                  <Typography key={index} variant="body2" color="text.secondary">
+                    • {storeName}
+                  </Typography>
+                ))}
               </Box>
             )}
 
@@ -270,6 +321,18 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
                       Inactif
                     </Typography>
                   )}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Informations supplémentaires sur l'employé */}
+            {currentEmployee && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2">
+                  Nombre total de magasins assignés:
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {currentEmployee.totalStoresAssigned}
                 </Typography>
               </Box>
             )}

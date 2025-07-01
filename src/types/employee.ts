@@ -1,7 +1,44 @@
+// src/types/employee.ts
+
 export type EmployeeRole = 'cashier' | 'supervisor';
 export type EmployeeStatusFilter = 'active' | 'inactive' | 'all';
 export type EmployeeRoleFilter = 'cashier' | 'supervisor' | 'all';
 
+// Interfaces pour les entités liées
+export interface ICompany {
+  _id: string;
+  name: string;
+  ref_code: string;
+}
+
+export interface IStoreContact {
+  phone: string;
+  address: {
+    city: string;
+    country: string;
+  };
+}
+
+export interface IStore {
+  _id: string;
+  name: string;
+  contact: IStoreContact;
+  company_id: ICompany;
+}
+
+export interface ICreatedBy {
+  _id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+}
+
+export interface IAssignedStore {
+  storeId: string;
+  role: 'employee' | 'supervisor';
+}
+
+// Interface de base pour les employés
 export interface IEmployeeBase {
   _id: string;
   first_name: string;
@@ -9,33 +46,41 @@ export interface IEmployeeBase {
   phone: string;
   email?: string;
   role: EmployeeRole;
-  pin_code: string; 
+  pin_code: number | string;
   is_active: boolean;
-  created_at: Date | string;
-  updated_at: Date | string;
-}
-export interface IEmployee extends IEmployeeBase {
-  // Pour les cashiers
-  store_id?: string; // ID du magasin assigné
-  
-  // Pour les supervisors
-  supervised_store_id?: string; // ID du magasin supervisé
-  
-  created_by?: string; // ID créateur
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  createdBy?: ICreatedBy;
+  // Nouvelles propriétés enrichies
+  stores: IStore[];
+  supervisedStore?: IStore;
+  assignedStores: IAssignedStore[];
+  totalStoresAssigned: number;
 }
 
-// Types différenciés pour plus de sécurité
+// Interface principale Employee (remplace l'ancienne IEmployee)
+export interface IEmployee extends IEmployeeBase {
+  // Cette interface englobe maintenant tous les types d'employés
+  // avec les informations enrichies du backend
+}
+
+// Types différenciés pour plus de sécurité de type
 export type Cashier = IEmployee & {
   role: 'cashier';
-  store_id: string; // Obligatoire pour les caissiers
+  stores: IStore[]; // Au moins un store assigné
+  assignedStores: IAssignedStore[]; // Rôle 'employee'
 };
 
 export type Supervisor = IEmployee & {
   role: 'supervisor';
-  supervised_store_id: string; // Obligatoire pour les superviseurs
+  supervisedStore: IStore; // Store supervisé obligatoire
+  assignedStores: IAssignedStore[]; // Rôle 'supervisor'
 };
 
-// Pour les formulaires
+// Union type pour les employés
+export type Employee = Cashier | Supervisor;
+
+// Pour les formulaires (inchangé car c'est pour la création/modification)
 export type EmployeeFormValues = {
   first_name: string;
   last_name: string;
@@ -49,18 +94,27 @@ export type EmployeeFormValues = {
   password?: string;
 };
 
-// Pour les réponses API
+// Métadonnées de réponse du backend
+export interface IEmployeeListMeta {
+  totalCompanies: number;
+  totalStores: number;
+  storeFilter?: string;
+}
+
+// Pour les réponses API enrichies
 export type EmployeeListResponse = {
-  data: Array<Cashier | Supervisor>;
+  success: boolean;
+  data: Employee[];
   pagination: {
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   };
+  meta: IEmployeeListMeta;
 };
 
-
+// Interface pour les filtres de table
 export interface IEmployeeTableFilters {
   is_active: EmployeeStatusFilter;
   name: string;
@@ -69,10 +123,10 @@ export interface IEmployeeTableFilters {
   query?: string; // Optionnel: pour la recherche globale
 }
 
-export type IEmployeeTableFilterValue = 
-  | string 
-  | string[] 
-  | EmployeeStatusFilter 
+export type IEmployeeTableFilterValue =
+  | string
+  | string[]
+  | EmployeeStatusFilter
   | EmployeeRoleFilter;
 
 // Pour les paramètres de requête API
@@ -81,6 +135,50 @@ export type EmployeeQueryParams = {
   limit?: number;
   role?: EmployeeRole;
   is_active?: boolean;
-  store_id?: string;
+  storeId?: string; // Attention: changé de store_id à storeId pour correspondre au backend
   query?: string;
+};
+
+// Helpers pour vérifier les types
+export const isCashier = (employee: Employee): employee is Cashier => {
+  return employee.role === 'cashier';
+};
+
+export const isSupervisor = (employee: Employee): employee is Supervisor => {
+  return employee.role === 'supervisor';
+};
+
+// Helpers pour extraire les informations des stores
+export const getEmployeeStores = (employee: Employee): IStore[] => {
+  if (isCashier(employee)) {
+    return employee.stores;
+  } else if (isSupervisor(employee) && employee.supervisedStore) {
+    return [employee.supervisedStore];
+  }
+  return [];
+};
+
+export const getEmployeeStoreNames = (employee: Employee): string[] => {
+  return getEmployeeStores(employee).map(store => store.name);
+};
+
+export const getEmployeeCompanies = (employee: Employee): ICompany[] => {
+  const stores = getEmployeeStores(employee);
+  const companies = stores.map(store => store.company_id);
+  // Supprimer les doublons par _id
+  return companies.filter((company, index, self) => 
+    index === self.findIndex(c => c._id === company._id)
+  );
+};
+
+// Types pour les actions de mise à jour de statut
+export interface IEmployeeStatusUpdate {
+  id: string;
+  is_active: boolean;
+}
+
+// Type pour les détails complets d'un employé
+export type EmployeeDetailsResponse = {
+  success: boolean;
+  data: Employee;
 };

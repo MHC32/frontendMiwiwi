@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 // types
-import { Cashier, Supervisor } from 'src/types/employee';
+import { Employee, isCashier, isSupervisor, getEmployeeStoreNames } from 'src/types/employee';
 // components
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
@@ -23,7 +23,7 @@ import EmployeeQuickEditForm from './employee-quick-edit-form';
 // ----------------------------------------------------------------------
 
 type Props = {
-  row: Cashier | Supervisor;
+  row: Employee;
   selected: boolean;
   onSelectRow: VoidFunction;
   onDeleteRow: VoidFunction;
@@ -39,7 +39,7 @@ export default function EmployeeTableRow({
   onDeleteRow,
   onToggleStatus,
 }: Props) {
-  const { _id,first_name, last_name, phone, email, is_active, role, store_id, supervised_store_id } = row;
+  const { _id, first_name, last_name, phone, email, is_active, role } = row;
 
   const confirm = useBoolean();
   const quickEdit = useBoolean();
@@ -47,10 +47,29 @@ export default function EmployeeTableRow({
 
   const fullName = `${first_name} ${last_name}`;
   const roleLabel = role === 'cashier' ? 'Caissier' : 'Superviseur';
-  const storeInfo = role === 'cashier' 
-    ? `Magasin: ${store_id || 'Non assigné'}` 
-    : `Supervise: ${supervised_store_id || 'Aucun magasin'}`;
-    console.log('men row', row )
+  
+  // Gestion des informations de magasin selon les nouveaux types
+  const getStoreInfo = () => {
+    if (isCashier(row)) {
+      const storeNames = getEmployeeStoreNames(row);
+      if (storeNames.length === 0) {
+        return 'Aucun magasin assigné';
+      }
+      if (storeNames.length === 1) {
+        return `Magasin: ${storeNames[0]}`;
+      }
+      return `Magasins: ${storeNames.join(', ')}`;
+    } else if (isSupervisor(row)) {
+      return row.supervisedStore 
+        ? `Supervise: ${row.supervisedStore.name}` 
+        : 'Aucun magasin supervisé';
+    }
+    return 'Information non disponible';
+  };
+
+  const storeInfo = getStoreInfo();
+
+  console.log('employee row data:', row);
 
   return (
     <>
@@ -95,7 +114,17 @@ export default function EmployeeTableRow({
         </TableCell>
 
         <TableCell>
-          {storeInfo}
+          <Tooltip title={storeInfo} placement="top" arrow>
+            <span style={{ 
+              display: 'block',
+              maxWidth: '200px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {storeInfo}
+            </span>
+          </Tooltip>
         </TableCell>
 
         <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>

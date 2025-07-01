@@ -1,6 +1,5 @@
 import isEqual from 'lodash/isEqual';
 import { useState, useCallback, useEffect } from 'react';
-// @mui
 import { alpha } from '@mui/material/styles';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -12,16 +11,11 @@ import Container from '@mui/material/Container';
 import TableBody from '@mui/material/TableBody';
 import IconButton from '@mui/material/IconButton';
 import TableContainer from '@mui/material/TableContainer';
-// routes
-import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hook';
+import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
-// types
-import { Cashier, Supervisor, IEmployeeTableFilters, IEmployeeTableFilterValue } from 'src/types/employee';
-// hooks
 import { useBoolean } from 'src/hooks/use-boolean';
 import { useSnackbar } from 'src/components/snackbar';
-// components
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
@@ -38,14 +32,11 @@ import {
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
-// requests
 import { employeeRequests, storeRequests } from 'src/utils/request';
-//
 import EmployeeTableRow from '../employee-table-row';
 import EmployeeTableToolbar from '../employee-table-toolbar';
 import EmployeeTableFiltersResult from '../employee-table-filters-result';
-
-// ----------------------------------------------------------------------
+import { Employee, IEmployeeTableFilters, EmployeeRole, EmployeeStatusFilter, EmployeeRoleFilter, IEmployeeTableFilterValue } from 'src/types/employee';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tous' },
@@ -75,8 +66,6 @@ const defaultFilters: IEmployeeTableFilters = {
   role: 'all',
 };
 
-// ----------------------------------------------------------------------
-
 export default function EmployeeListView() {
   const table = useTable();
   const settings = useSettingsContext();
@@ -84,8 +73,8 @@ export default function EmployeeListView() {
   const confirm = useBoolean();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [tableData, setTableData] = useState<Array<Cashier | Supervisor>>([]);
-  const [stores, setStores] = useState<string[]>([]);
+  const [tableData, setTableData] = useState<Employee[]>([]);
+  const [stores, setStores] = useState<{id: string, name: string}[]>([]);
   const [filters, setFilters] = useState<IEmployeeTableFilters>(defaultFilters);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -93,24 +82,25 @@ export default function EmployeeListView() {
     try {
       setIsLoading(true);
       const response = await employeeRequests.getEmployees({
-      page: table.page + 1,
-      limit: table.rowsPerPage,
-      is_active: filters.is_active === 'all' ? undefined : filters.is_active === 'active',
-      role: filters.role === 'all' ? undefined : filters.role as 'cashier' | 'supervisor',
-      storeId: filters.store_id.length ? filters.store_id[0] : undefined, 
+        page: table.page + 1,
+        limit: table.rowsPerPage,
+        is_active: filters.is_active === 'all' ? undefined : filters.is_active === 'active',
+        role: filters.role === 'all' ? undefined : filters.role as EmployeeRole,
+        storeId: filters.store_id.length ? filters.store_id[0] : undefined, 
       });
+      
       setTableData(response.data);
       
       // Récupérer les magasins pour les filtres
       const storesResponse = await storeRequests.getStores({ limit: 100, is_active: true });
-      setStores(storesResponse.data.map(store => store.id));
+      setStores(storesResponse.data.map(store => ({ id: store.id, name: store.name })));
     } catch (error) {
       console.error('Failed to fetch employees:', error);
       enqueueSnackbar('Erreur lors du chargement des employés', { variant: 'error' });
     } finally {
       setIsLoading(false);
     }
-  }, [filters.name, filters.is_active, filters.role, filters.store_id, table.page, table.rowsPerPage, enqueueSnackbar]);
+  }, [filters, table.page, table.rowsPerPage, enqueueSnackbar]);
 
   useEffect(() => {
     fetchEmployees();
@@ -118,14 +108,12 @@ export default function EmployeeListView() {
 
   const handleToggleStatus = useCallback(async (id: string, currentStatus: boolean) => {
     try {
-      // Mise à jour optimiste
       setTableData(prev => prev.map(employee => 
         employee._id === id ? { ...employee, is_active: !currentStatus } : employee
       ));
 
       const response = await employeeRequests.toggleEmployeeStatus(id, !currentStatus);
       
-      // Mise à jour avec les données du serveur
       setTableData(prev => prev.map(employee => 
         employee._id === id ? response : employee
       ));
@@ -134,7 +122,6 @@ export default function EmployeeListView() {
         variant: 'success'
       });
     } catch (error) {
-      // Annuler la modification optimiste en cas d'erreur
       setTableData(prev => prev.map(employee => 
         employee._id === id ? { ...employee, is_active: currentStatus } : employee
       ));
@@ -209,16 +196,7 @@ export default function EmployeeListView() {
         { variant: 'error' }
       );
     }
-  }, [
-    confirm,
-    dataFiltered.length,
-    dataInPage.length,
-    fetchEmployees,
-    table,
-    table.selected,
-    tableData.length,
-    enqueueSnackbar
-  ]);
+  }, [confirm, dataFiltered.length, dataInPage.length, fetchEmployees, table, enqueueSnackbar]);
 
   const handleEditRow = useCallback(
     (id: string) => {
@@ -264,9 +242,7 @@ export default function EmployeeListView() {
               Nouvel employé
             </Button>
           }
-          sx={{
-            mb: { xs: 3, md: 5 },
-          }}
+          sx={{ mb: { xs: 3, md: 5 } }}
         />
 
         <Card>
@@ -286,9 +262,7 @@ export default function EmployeeListView() {
                 label={tab.label}
                 icon={
                   <Label
-                    variant={
-                      ((tab.value === 'all' || tab.value === filters.is_active) && 'filled') || 'soft'
-                    }
+                    variant={((tab.value === 'all' || tab.value === filters.is_active) ? 'filled' : 'soft')}
                     color={
                       (tab.value === 'active' && 'success') ||
                       (tab.value === 'inactive' && 'error') ||
@@ -296,10 +270,8 @@ export default function EmployeeListView() {
                     }
                   >
                     {tab.value === 'all' && tableData.length}
-                    {tab.value === 'active' &&
-                      tableData.filter((employee) => employee.is_active).length}
-                    {tab.value === 'inactive' &&
-                      tableData.filter((employee) => !employee.is_active).length}
+                    {tab.value === 'active' && tableData.filter((e) => e.is_active).length}
+                    {tab.value === 'inactive' && tableData.filter((e) => !e.is_active).length}
                   </Label>
                 }
               />
@@ -321,9 +293,7 @@ export default function EmployeeListView() {
                 label={tab.label}
                 icon={
                   <Label
-                    variant={
-                      ((tab.value === 'all' || tab.value === filters.role) && 'filled') || 'soft'
-                    }
+                    variant={((tab.value === 'all' || tab.value === filters.role) ? 'filled' : 'soft')}
                     color={
                       (tab.value === 'cashier' && 'info') ||
                       (tab.value === 'supervisor' && 'warning') ||
@@ -331,10 +301,8 @@ export default function EmployeeListView() {
                     }
                   >
                     {tab.value === 'all' && tableData.length}
-                    {tab.value === 'cashier' &&
-                      tableData.filter((employee) => employee.role === 'cashier').length}
-                    {tab.value === 'supervisor' &&
-                      tableData.filter((employee) => employee.role === 'supervisor').length}
+                    {tab.value === 'cashier' && tableData.filter((e) => e.role === 'cashier').length}
+                    {tab.value === 'supervisor' && tableData.filter((e) => e.role === 'supervisor').length}
                   </Label>
                 }
               />
@@ -397,10 +365,7 @@ export default function EmployeeListView() {
 
                 <TableBody>
                   {dataFiltered
-                    .slice(
-                      table.page * table.rowsPerPage,
-                      table.page * table.rowsPerPage + table.rowsPerPage
-                    )
+                    .slice(table.page * table.rowsPerPage, table.page * table.rowsPerPage + table.rowsPerPage)
                     .map((row) => (
                       <EmployeeTableRow
                         key={row._id}
@@ -413,11 +378,7 @@ export default function EmployeeListView() {
                       />
                     ))}
 
-                  <TableEmptyRows
-                    height={denseHeight}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, tableData.length)}
-                  />
-
+                  <TableEmptyRows height={denseHeight} emptyRows={emptyRows(table.page, table.rowsPerPage, tableData.length)} />
                   <TableNoData notFound={notFound} />
                 </TableBody>
               </Table>
@@ -446,11 +407,7 @@ export default function EmployeeListView() {
           </>
         }
         action={
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleDeleteRows}
-          >
+          <Button variant="contained" color="error" onClick={handleDeleteRows}>
             Supprimer
           </Button>
         }
@@ -459,14 +416,12 @@ export default function EmployeeListView() {
   );
 }
 
-// ----------------------------------------------------------------------
-
 function applyFilter({
   inputData,
   comparator,
   filters,
 }: {
-  inputData: Array<Cashier | Supervisor>;
+  inputData: Employee[];
   comparator: (a: any, b: any) => number;
   filters: IEmployeeTableFilters;
 }) {
@@ -501,10 +456,11 @@ function applyFilter({
   if (store_id.length) {
     inputData = inputData.filter((employee) => {
       if (employee.role === 'cashier') {
-        return store_id.includes((employee as Cashier).store_id);
-      } else {
-        return store_id.includes((employee as Supervisor).supervised_store_id);
+        return employee.stores.some(store => store_id.includes(store._id));
+      } else if (employee.role === 'supervisor') {
+        return employee.supervisedStore && store_id.includes(employee.supervisedStore._id);
       }
+      return false;
     });
   }
 
