@@ -60,8 +60,8 @@ export default function EmployeeNewEditForm({ currentEmployee, employeeId }: Pro
     first_name: Yup.string().required('Le prénom est requis'),
     last_name: Yup.string().required('Le nom est requis'),
     phone: Yup.string()
-      .required('Le téléphone est requis')
-      .matches(/^[0-9]{8,15}$/, 'Numéro de téléphone invalide'),
+      .required('Le téléphone est requis'),
+      // .matches(/^[0-9]{8,15}$/, 'Numéro de téléphone invalide'),
     email: Yup.string().optional().email('Email invalide'),
     role: Yup.string().required('Le rôle est requis'),
     password: Yup.string()
