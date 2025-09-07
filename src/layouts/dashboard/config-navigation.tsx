@@ -50,18 +50,6 @@ export function useNavData() {
 
   const data = useMemo(
     () => [
-      // OVERVIEW
-      // ----------------------------------------------------------------------
-      //  {
-      //    subheader: t('overview'),
-      //    items: [
-      //     { title: t('app'), path: paths.dashboard.root, icon: ICONS.dashboard },
-      //     { title: t('analytics'), path: paths.dashboard.general.analytics, icon: ICONS.analytics },
-      //      { title: t('file'), path: paths.dashboard.general.file, icon: ICONS.file },
-          
-      //    ],
-      //  },
-
       // MANAGEMENT
       // ----------------------------------------------------------------------
       {
@@ -75,7 +63,6 @@ export function useNavData() {
             children: [
               { title: 'Compte', path: paths.dashboard.user.account },
             ],
-            
           },
           
           {
@@ -86,7 +73,6 @@ export function useNavData() {
               { title: 'Ajouter Magasin', path: paths.dashboard.store.new },
               { title: 'Liste Magasin', path: paths.dashboard.store.list },
             ],
-            
           },
 
           {
@@ -97,14 +83,28 @@ export function useNavData() {
               { title: 'Ajouter Employer', path: paths.dashboard.employee.new },
               { title: 'Liste Employer', path: paths.dashboard.employee.list },
             ],
-            
-          }
-          
+          },
+
+          {
+            title: 'Catégorie',
+            path: paths.dashboard.category.root,
+            icon: ICONS.label,
+            children: [
+              { title: 'Liste Catégorie', path: paths.dashboard.category.list },
+            ],
+          },
+
+          {
+            title: 'Produit',
+            path: paths.dashboard.product.root,
+            icon: ICONS.product,
+            children: [
+              { title: 'Ajouter Produit', path: paths.dashboard.product.new },
+              { title: 'Liste Produit', path: paths.dashboard.product.list },
+            ],
+          },
         ],
       },
-
-      
-      
     ],
     [t]
   );

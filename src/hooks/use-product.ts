@@ -1,4 +1,3 @@
-// src/hooks/use-product.ts
 import { useSelector } from 'react-redux';
 import {
   selectProducts,
@@ -8,10 +7,9 @@ import {
   selectProductPagination,
   selectActiveProducts,
   selectLowStockProducts,
-} from 'src/redux/slices/product';
+} from '../redux/slices/product';
 
-// Export par défaut
-export default function useProduct() {
+export function useProduct() {
   const products = useSelector(selectProducts);
   const currentProduct = useSelector(selectCurrentProduct);
   const loading = useSelector(selectProductLoading);

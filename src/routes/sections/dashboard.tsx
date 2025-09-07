@@ -7,15 +7,16 @@ import DashboardLayout from 'src/layouts/dashboard';
 // components
 import { LoadingScreen } from 'src/components/loading-screen';
 
+
+
 // ----------------------------------------------------------------------
 
 // OVERVIEW
 const OverviewFilePage = lazy(() => import('src/pages/dashboard/file'));
 // PRODUCT
-const ProductDetailsPage = lazy(() => import('src/pages/dashboard/product/details'));
+
 const ProductListPage = lazy(() => import('src/pages/dashboard/product/list'));
-const ProductCreatePage = lazy(() => import('src/pages/dashboard/product/new'));
-const ProductEditPage = lazy(() => import('src/pages/dashboard/product/edit'));
+
 // ORDER
 const OrderListPage = lazy(() => import('src/pages/dashboard/order/list'));
 const OrderDetailsPage = lazy(() => import('src/pages/dashboard/order/details'));
@@ -27,6 +28,11 @@ const UserListPage = lazy(() => import('src/pages/dashboard/user/list'));
 const UserAccountPage = lazy(() => import('src/pages/dashboard/user/account'));
 const UserCreatePage = lazy(() => import('src/pages/dashboard/user/new'));
 const UserEditPage = lazy(() => import('src/pages/dashboard/user/edit'));
+
+
+// 🆕 CATEGORY - Nouvelles imports
+const CategoryListPage = lazy(() => import('src/pages/dashboard/category/list'));
+
 
 
 // FILE MANAGER
@@ -60,14 +66,20 @@ export const dashboardRoutes = [
           { path: 'account', element: <UserAccountPage /> },
         ],
       },
+
+      // 🆕 CATEGORY ROUTES - Nouvelles routes
+            {
+              path: 'category',
+              children: [
+                { element: <CategoryListPage />, index: true },
+                { path: 'list', element: <CategoryListPage/> },
+              ],
+            },
       {
         path: 'product',
         children: [
           { element: <ProductListPage />, index: true },
           { path: 'list', element: <ProductListPage /> },
-          { path: ':id', element: <ProductDetailsPage /> },
-          { path: 'new', element: <ProductCreatePage /> },
-          { path: ':id/edit', element: <ProductEditPage /> },
         ],
       },
       {

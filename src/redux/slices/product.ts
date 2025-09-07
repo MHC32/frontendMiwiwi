@@ -1,201 +1,127 @@
-import sum from 'lodash/sum';
-import uniq from 'lodash/uniq';
-import uniqBy from 'lodash/uniqBy';
-import { createSlice, Dispatch } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+// types
+import { IProductItem, ProductListResponse } from 'src/types/product';
 // utils
-import axios from 'src/utils/axios';
-import { IProductState, ICheckoutCartItem } from 'src/types/product';
+import { productRequests } from 'src/utils/request';
+import type { AppDispatch } from '../store';
 
 // ----------------------------------------------------------------------
 
-const initialState: IProductState = {
+type ProductState = {
+  products: IProductItem[];
+  currentProduct: IProductItem | null;
+  isLoading: boolean;
+  error: string | null;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+const initialState: ProductState = {
   products: [],
-  product: null,
-  checkout: {
-    activeStep: 0,
-    cart: [],
-    subTotal: 0,
+  currentProduct: null,
+  isLoading: false,
+  error: null,
+  pagination: {
     total: 0,
-    discount: 0,
-    shipping: 0,
-    billing: null,
-    totalItems: 0,
-  },
-  productsStatus: {
-    loading: false,
-    empty: false,
-    error: null,
-  },
-  productStatus: {
-    loading: false,
-    error: null,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
   },
 };
+
+// ----------------------------------------------------------------------
 
 const slice = createSlice({
   name: 'product',
   initialState,
   reducers: {
-    // GET PRODUCTS
-    getProductsStart(state) {
-      state.productsStatus.loading = true;
-      state.productsStatus.empty = false;
-      state.productsStatus.error = null;
-    },
-    getProductsFailure(state, action) {
-      state.productsStatus.loading = false;
-      state.productsStatus.empty = false;
-      state.productsStatus.error = action.payload;
-    },
-    getProductsSuccess(state, action) {
-      const products = action.payload;
-
-      state.products = products;
-
-      state.productsStatus.loading = false;
-      state.productsStatus.empty = !products.length;
-      state.productsStatus.error = null;
+    // Loading states
+    startLoading(state) {
+      state.isLoading = true;
+      state.error = null;
     },
 
-    // GET PRODUCT
-    getProductStart(state) {
-      state.productStatus.loading = true;
-      state.productStatus.error = null;
-    },
-    getProductFailure(state, action) {
-      state.productStatus.loading = false;
-      state.productStatus.error = action.payload;
-    },
-    getProductSuccess(state, action) {
-      const product = action.payload;
-
-      state.product = product;
-
-      state.productStatus.loading = false;
-      state.productStatus.error = null;
+    stopLoading(state) {
+      state.isLoading = false;
     },
 
-    // CHECKOUT
-    getCart(state, action) {
-      const cart: ICheckoutCartItem[] = action.payload;
-
-      const totalItems = sum(cart.map((product) => product.quantity));
-
-      const subTotal = sum(cart.map((product) => product.price * product.quantity));
-
-      state.checkout.cart = cart;
-      state.checkout.discount = state.checkout.discount || 0;
-      state.checkout.shipping = state.checkout.shipping || 0;
-      state.checkout.billing = state.checkout.billing || null;
-      state.checkout.subTotal = subTotal;
-      state.checkout.total = subTotal - state.checkout.discount;
-      state.checkout.totalItems = totalItems;
+    hasError(state, action: PayloadAction<string>) {
+      state.isLoading = false;
+      state.error = action.payload;
     },
 
-    addToCart(state, action) {
-      const newProduct = action.payload;
+    // Products list
+    getProductsSuccess(state, action: PayloadAction<ProductListResponse>) {
+      state.isLoading = false;
+      state.products = action.payload.data;
+      state.pagination = action.payload.pagination;
+      state.error = null;
+    },
 
-      const cartEmpty = !state.checkout.cart.length;
+    // Single product
+    getProductSuccess(state, action: PayloadAction<IProductItem>) {
+      state.isLoading = false;
+      state.currentProduct = action.payload;
+      state.error = null;
+    },
 
-      if (cartEmpty) {
-        state.checkout.cart = [...state.checkout.cart, newProduct];
-      } else {
-        state.checkout.cart = state.checkout.cart.map((product) => {
-          const existProduct = product.id === newProduct.id;
+    // Create product
+    createProductSuccess(state, action: PayloadAction<IProductItem>) {
+      state.isLoading = false;
+      state.products.unshift(action.payload);
+      state.pagination.total += 1;
+      state.error = null;
+    },
 
-          if (existProduct) {
-            return {
-              ...product,
-              colors: uniq([...product.colors, ...newProduct.colors]),
-              quantity: product.quantity + 1,
-            };
-          }
-
-          return product;
-        });
+    // Update product
+    updateProductSuccess(state, action: PayloadAction<IProductItem>) {
+      state.isLoading = false;
+      const index = state.products.findIndex(product => product._id === action.payload._id);
+      if (index !== -1) {
+        state.products[index] = action.payload;
       }
-
-      state.checkout.cart = uniqBy([...state.checkout.cart, newProduct], 'id');
-      state.checkout.totalItems = sum(state.checkout.cart.map((product) => product.quantity));
+      if (state.currentProduct?._id === action.payload._id) {
+        state.currentProduct = action.payload;
+      }
+      state.error = null;
     },
 
-    deleteCart(state, action) {
-      const updateCart = state.checkout.cart.filter((product) => product.id !== action.payload);
-
-      state.checkout.cart = updateCart;
+    // Toggle status
+    toggleProductStatusSuccess(state, action: PayloadAction<IProductItem>) {
+      state.isLoading = false;
+      const index = state.products.findIndex(product => product._id === action.payload._id);
+      if (index !== -1) {
+        state.products[index] = action.payload;
+      }
+      if (state.currentProduct?._id === action.payload._id) {
+        state.currentProduct = action.payload;
+      }
+      state.error = null;
     },
 
-    resetCart(state) {
-      state.checkout.cart = [];
-      state.checkout.billing = null;
-      state.checkout.activeStep = 0;
-      state.checkout.total = 0;
-      state.checkout.subTotal = 0;
-      state.checkout.discount = 0;
-      state.checkout.shipping = 0;
-      state.checkout.totalItems = 0;
+    // Delete product (soft delete)
+    deleteProductSuccess(state, action: PayloadAction<string>) {
+      state.isLoading = false;
+      state.products = state.products.filter(product => product._id !== action.payload);
+      state.pagination.total -= 1;
+      if (state.currentProduct?._id === action.payload) {
+        state.currentProduct = null;
+      }
+      state.error = null;
     },
 
-    backStep(state) {
-      state.checkout.activeStep -= 1;
+    // Clear current product
+    clearCurrentProduct(state) {
+      state.currentProduct = null;
     },
 
-    nextStep(state) {
-      state.checkout.activeStep += 1;
-    },
-
-    gotoStep(state, action) {
-      state.checkout.activeStep = action.payload;
-    },
-
-    increaseQuantity(state, action) {
-      const productId = action.payload;
-
-      const updateCart = state.checkout.cart.map((product) => {
-        if (product.id === productId) {
-          return {
-            ...product,
-            quantity: product.quantity + 1,
-          };
-        }
-        return product;
-      });
-
-      state.checkout.cart = updateCart;
-    },
-
-    decreaseQuantity(state, action) {
-      const productId = action.payload;
-
-      const updateCart = state.checkout.cart.map((product) => {
-        if (product.id === productId) {
-          return {
-            ...product,
-            quantity: product.quantity - 1,
-          };
-        }
-        return product;
-      });
-
-      state.checkout.cart = updateCart;
-    },
-
-    createBilling(state, action) {
-      state.checkout.billing = action.payload;
-    },
-
-    applyDiscount(state, action) {
-      const discount = action.payload;
-
-      state.checkout.discount = discount;
-      state.checkout.total = state.checkout.subTotal - discount;
-    },
-
-    applyShipping(state, action) {
-      const shipping = action.payload;
-
-      state.checkout.shipping = shipping;
-      state.checkout.total = state.checkout.subTotal - state.checkout.discount + shipping;
+    // Reset state
+    resetProducts(state) {
+      Object.assign(state, initialState);
     },
   },
 });
@@ -205,49 +131,159 @@ export default slice.reducer;
 
 // Actions
 export const {
-  getCart,
-  addToCart,
-  resetCart,
-  gotoStep,
-  backStep,
-  nextStep,
-  deleteCart,
-  createBilling,
-  applyShipping,
-  applyDiscount,
-  increaseQuantity,
-  decreaseQuantity,
+  startLoading,
+  stopLoading,
+  hasError,
+  getProductsSuccess,
+  getProductSuccess,
+  createProductSuccess,
+  updateProductSuccess,
+  toggleProductStatusSuccess,
+  deleteProductSuccess,
+  clearCurrentProduct,
+  resetProducts,
 } = slice.actions;
 
 // ----------------------------------------------------------------------
 
-export function getProducts() {
-  return async (dispatch: Dispatch) => {
-    dispatch(slice.actions.getProductsStart());
-    try {
-      const response = await axios.get('');
-      dispatch(slice.actions.getProductsSuccess(response.data.products));
-    } catch (error) {
-      dispatch(slice.actions.getProductsFailure(error));
-    }
-  };
-}
+// Async Actions (Thunks)
 
-// ----------------------------------------------------------------------
+export const getProducts = (params?: {
+  page?: number;
+  limit?: number;
+  storeId?: string;
+  categoryId?: string;
+  type?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.getProducts(params);
+    dispatch(getProductsSuccess(response));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
 
-export function getProduct(productId: string) {
-  return async (dispatch: Dispatch) => {
-    dispatch(slice.actions.getProductStart());
-    try {
-      const response = await axios.get('', {
-        params: {
-          productId,
-        },
-      });
-      dispatch(slice.actions.getProductSuccess(response.data.product));
-    } catch (error) {
-      console.error(error);
-      dispatch(slice.actions.getProductFailure(error));
+export const getProduct = (id: string) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.getProducts({ search: id }); // Adapter selon votre API
+    if (response.data.length > 0) {
+      dispatch(getProductSuccess(response.data[0]));
+    } else {
+      throw new Error('Produit non trouvé');
     }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const createProduct = (productData: FormData) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.createProduct(productData);
+    dispatch(createProductSuccess(response));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const updateProduct = (id: string, productData: FormData) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.updateProduct(id, productData);
+    dispatch(updateProductSuccess(response));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const deleteProduct = (id: string) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    await productRequests.deactivateProduct(id);
+    dispatch(deleteProductSuccess(id));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const activateProduct = (id: string) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.reactivateProduct(id);
+    dispatch(toggleProductStatusSuccess(response));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const deactivateProduct = (id: string) => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(startLoading());
+    const response = await productRequests.deactivateProduct(id);
+    dispatch(toggleProductStatusSuccess(response));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    dispatch(hasError(errorMessage));
+    throw error;
+  }
+};
+
+export const toggleProductStatus = (id: string, currentStatus: boolean) => 
+  async (dispatch: AppDispatch) => {
+    return currentStatus 
+      ? dispatch(deactivateProduct(id))
+      : dispatch(activateProduct(id));
   };
-}
+
+// Selectors
+export const selectProductState = (state: { product: ProductState }) => state.product;
+export const selectProducts = (state: { product: ProductState }) => state.product.products;
+export const selectCurrentProduct = (state: { product: ProductState }) => state.product.currentProduct;
+export const selectProductLoading = (state: { product: ProductState }) => state.product.isLoading;
+export const selectProductError = (state: { product: ProductState }) => state.product.error;
+export const selectProductPagination = (state: { product: ProductState }) => state.product.pagination;
+
+// Selectors enrichis
+export const selectProductById = (id: string) => (state: { product: ProductState }) => 
+  state.product.products.find(product => product._id === id);
+
+export const selectProductsByStore = (storeId: string) => (state: { product: ProductState }) => 
+  state.product.products.filter(product => product.store_id._id === storeId);
+
+export const selectProductsByCategory = (categoryId: string) => (state: { product: ProductState }) => 
+  state.product.products.filter(product => product.category_id?._id === categoryId);
+
+export const selectProductsByType = (type: string) => (state: { product: ProductState }) => 
+  state.product.products.filter(product => product.type === type);
+
+export const selectActiveProducts = (state: { product: ProductState }) => 
+  state.product.products.filter(product => product.is_active);
+
+export const selectInactiveProducts = (state: { product: ProductState }) => 
+  state.product.products.filter(product => !product.is_active);
+
+export const selectLowStockProducts = (state: { product: ProductState }) => 
+  state.product.products.filter(product => 
+    product.inventory.current <= product.inventory.min_stock
+  );

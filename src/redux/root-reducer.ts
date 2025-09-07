@@ -10,6 +10,7 @@ import authReducer from './slices/auth.slice';
 import companyReducer from './slices/companySlice';
 import storeReducer from './slices/store.slice';
 import employeeReducer from './slices/employee.slice'
+import categoryReducer from './slices/category';
 // ----------------------------------------------------------------------
 
 export const rootPersistConfig = {
@@ -42,6 +43,6 @@ export const rootReducer = combineReducers({
   product: persistReducer(productPersistConfig, productReducer),
   company: companyReducer,
   store: storeReducer,
-  employee: employeeReducer
-  
+  employee: employeeReducer,
+  category: categoryReducer,
 });

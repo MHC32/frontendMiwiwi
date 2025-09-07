@@ -1,117 +1,188 @@
 import isEqual from 'lodash/isEqual';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 // @mui
+import { alpha } from '@mui/material/styles';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 import TableBody from '@mui/material/TableBody';
-import IconButton from '@mui/material/IconButton';
 import TableContainer from '@mui/material/TableContainer';
-// redux
-import { useDispatch } from 'src/redux/store';
-import { getProducts } from 'src/redux/slices/product';
 // routes
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hook';
 import { RouterLink } from 'src/routes/components';
 // types
-import { IProduct, IProductTableFilters, IProductTableFilterValue } from 'src/types/product';
+import { IProductItem, IProductTableFilters, IProductTableFilterValue } from 'src/types/product';
 // hooks
 import { useBoolean } from 'src/hooks/use-boolean';
-// _mock
-import { PRODUCT_STOCK_OPTIONS } from 'src/_mock';
+import { useSnackbar } from 'src/components/snackbar';
 // components
+import Label from 'src/components/label';
+import Iconify from 'src/components/iconify';
+import Scrollbar from 'src/components/scrollbar';
+import { ConfirmDialog } from 'src/components/custom-dialog';
 import { useSettingsContext } from 'src/components/settings';
+import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
 import {
   useTable,
   getComparator,
   emptyRows,
   TableNoData,
-  TableSkeleton,
   TableEmptyRows,
   TableHeadCustom,
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
-import Iconify from 'src/components/iconify';
-import Scrollbar from 'src/components/scrollbar';
-import { ConfirmDialog } from 'src/components/custom-dialog';
-import CustomBreadcrumbs from 'src/components/custom-breadcrumbs';
-//
-import { useProduct } from '../hooks';
+// requests
+import { productRequests } from 'src/utils/request';
+// redux
+import { useDispatch } from 'src/redux/store';
+import { getProducts } from 'src/redux/slices/product';
+// hooks
+import { useProduct } from '../../../hooks/use-product';
+
 import ProductTableRow from '../product-table-row';
 import ProductTableToolbar from '../product-table-toolbar';
-import ProductTableFiltersResult from '../product-table-filters-result';
 
 // ----------------------------------------------------------------------
 
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'active', label: 'Actif' },
+  { value: 'inactive', label: 'Inactif' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'Tous types' },
+  { value: 'weight', label: 'Poids' },
+  { value: 'fuel', label: 'Carburant' },
+  { value: 'unit', label: 'Unité' },
+];
+
 const TABLE_HEAD = [
-  { id: 'name', label: 'Product' },
-  { id: 'createdAt', label: 'Create at', width: 160 },
-  { id: 'inventoryType', label: 'Stock', width: 160 },
-  { id: 'price', label: 'Price', width: 140 },
-  { id: 'publish', label: 'Publish', width: 110 },
+  { id: 'name', label: 'Produit' },
+  { id: 'type', label: 'Type', width: 120 },
+  { id: 'store', label: 'Magasin', width: 180 },
+  { id: 'category', label: 'Catégorie', width: 150 },
+  { id: 'stock', label: 'Stock', width: 120, align: 'right' },
+  { id: 'price', label: 'Prix', width: 120, align: 'right' },
+  { id: 'status', label: 'Statut', width: 100 },
   { id: '', width: 88 },
 ];
 
-const PUBLISH_OPTIONS = [
-  { value: 'published', label: 'Published' },
-  { value: 'draft', label: 'Draft' },
-];
-
-const defaultFilters = {
+const defaultFilters: IProductTableFilters = {
   name: '',
-  publish: [],
-  stock: [],
+  store_id: [],
+  category_id: [],
+  type: 'all',
+  status: 'all',
 };
 
 // ----------------------------------------------------------------------
 
-function useInitial() {
+export default function ProductListView() {
   const dispatch = useDispatch();
+  const table = useTable();
+  const settings = useSettingsContext();
+  const router = useRouter();
+  const confirm = useBoolean();
+  const { enqueueSnackbar } = useSnackbar();
+  const { products, loading, pagination } = useProduct();
 
-  const getProductsCallback = useCallback(() => {
-    dispatch(getProducts());
+  const [tableData, setTableData] = useState<IProductItem[]>([]);
+  const [filters, setFilters] = useState<IProductTableFilters>(defaultFilters);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await productRequests.getProducts({
+        page: table.page + 1,
+        limit: table.rowsPerPage,
+        search: filters.name,
+        type: filters.type === 'all' ? undefined : filters.type,
+        storeId: filters.store_id.length ? filters.store_id[0] : undefined,
+        categoryId: filters.category_id.length ? filters.category_id[0] : undefined,
+      });
+      setTableData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      enqueueSnackbar('Erreur lors du chargement des produits', { variant: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, table.page, table.rowsPerPage, enqueueSnackbar]);
+
+  useEffect(() => {
+    // ✅ Correction: Dispatch l'action correctement
+    dispatch(getProducts({
+      page: 1,
+      limit: 10,
+      search: '',
+    }));
   }, [dispatch]);
 
-  useEffect(() => {
-    getProductsCallback();
-  }, [getProductsCallback]);
+  const handleToggleStatus = useCallback(async (id: string, currentStatus: boolean) => {
+    try {
+      // Mise à jour optimiste
+      setTableData(prev => prev.map(product =>
+        product._id === id ? { ...product, is_active: !currentStatus } : product
+      ));
 
-  return null;
-}
+      const action = currentStatus ? 'deactivateProduct' : 'reactivateProduct';
+      await productRequests[action](id);
 
-// ----------------------------------------------------------------------
+      await fetchProducts();
 
-export default function ProductListView() {
-  useInitial();
+      enqueueSnackbar(`Produit ${currentStatus ? 'désactivé' : 'activé'} avec succès`, {
+        variant: 'success'
+      });
+    } catch (error) {
+      // Annuler la modification optimiste
+      setTableData(prev => prev.map(product =>
+        product._id === id ? { ...product, is_active: currentStatus } : product
+      ));
 
-  const router = useRouter();
-
-  const table = useTable();
-
-  const settings = useSettingsContext();
-
-  const { products, productsStatus } = useProduct();
-
-  const [tableData, setTableData] = useState<IProduct[]>([]);
-
-  const [filters, setFilters] = useState(defaultFilters);
-
-  const confirm = useBoolean();
-
-  useEffect(() => {
-    if (products.length) {
-      setTableData(products);
+      console.error('Failed to toggle product status:', error);
+      enqueueSnackbar('Erreur lors du changement de statut', { variant: 'error' });
     }
-  }, [products]);
+  }, [enqueueSnackbar, fetchProducts]);
 
-  const dataFiltered = applyFilter({
-    inputData: tableData,
-    comparator: getComparator(table.order, table.orderBy),
-    filters,
+  const dataFiltered = tableData.filter(product => {
+    // Filtre par statut
+    if (filters.status !== 'all') {
+      const isActive = filters.status === 'active';
+      if (product.is_active !== isActive) return false;
+    }
+    
+    // Filtre par type
+    if (filters.type !== 'all') {
+      if (product.type !== filters.type) return false;
+    }
+    
+    // Filtre par magasin
+    if (filters.store_id.length > 0) {
+      if (!filters.store_id.includes(product.store_id._id)) return false;
+    }
+    
+    // Filtre par catégorie
+    if (filters.category_id.length > 0) {
+      if (!product.category_id || !filters.category_id.includes(product.category_id._id)) return false;
+    }
+    
+    // Recherche par nom/code-barres
+    if (filters.name) {
+      const searchLower = filters.name.toLowerCase();
+      if (!product.name.toLowerCase().includes(searchLower) && 
+          !product.barcode?.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+    }
+    
+    return true;
   });
 
   const dataInPage = dataFiltered.slice(
@@ -119,12 +190,9 @@ export default function ProductListView() {
     table.page * table.rowsPerPage + table.rowsPerPage
   );
 
-  const denseHeight = table.dense ? 60 : 80;
-
+  const denseHeight = table.dense ? 52 : 72;
   const canReset = !isEqual(defaultFilters, filters);
-
-  const notFound =
-    (!dataFiltered.length && canReset) || (!productsStatus.loading && !dataFiltered.length);
+  const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
 
   const handleFilters = useCallback(
     (name: string, value: IProductTableFilterValue) => {
@@ -138,25 +206,19 @@ export default function ProductListView() {
   );
 
   const handleDeleteRow = useCallback(
-    (id: string) => {
-      const deleteRow = tableData.filter((row) => row.id !== id);
-      setTableData(deleteRow);
-
-      table.onUpdatePageDeleteRow(dataInPage.length);
+    async (id: string) => {
+      try {
+        await productRequests.deactivateProduct(id);
+        await fetchProducts();
+        table.onUpdatePageDeleteRow(dataInPage.length);
+        enqueueSnackbar('Produit supprimé avec succès', { variant: 'success' });
+      } catch (error) {
+        console.error('Failed to delete product:', error);
+        enqueueSnackbar('Erreur lors de la suppression', { variant: 'error' });
+      }
     },
-    [dataInPage.length, table, tableData]
+    [dataInPage.length, fetchProducts, table, enqueueSnackbar]
   );
-
-  const handleDeleteRows = useCallback(() => {
-    const deleteRows = tableData.filter((row) => !table.selected.includes(row.id));
-    setTableData(deleteRows);
-
-    table.onUpdatePageDeleteRows({
-      totalRows: tableData.length,
-      totalRowsInPage: dataInPage.length,
-      totalRowsFiltered: dataFiltered.length,
-    });
-  }, [dataFiltered.length, dataInPage.length, table, tableData]);
 
   const handleEditRow = useCallback(
     (id: string) => {
@@ -165,29 +227,21 @@ export default function ProductListView() {
     [router]
   );
 
-  const handleViewRow = useCallback(
-    (id: string) => {
-      router.push(paths.dashboard.product.details(id));
+  const handleFilterStatus = useCallback(
+    (event: React.SyntheticEvent, newValue: string) => {
+      handleFilters('status', newValue);
     },
-    [router]
+    [handleFilters]
   );
-
-  const handleResetFilters = useCallback(() => {
-    setFilters(defaultFilters);
-  }, []);
 
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
         <CustomBreadcrumbs
-          heading="List"
+          heading="Produits"
           links={[
             { name: 'Dashboard', href: paths.dashboard.root },
-            {
-              name: 'Product',
-              href: paths.dashboard.product.root,
-            },
-            { name: 'List' },
+            { name: 'Liste' },
           ]}
           action={
             <Button
@@ -196,53 +250,56 @@ export default function ProductListView() {
               variant="contained"
               startIcon={<Iconify icon="mingcute:add-line" />}
             >
-              New Product
+              Nouveau produit
             </Button>
           }
           sx={{ mb: { xs: 3, md: 5 } }}
         />
 
         <Card>
+          <Tabs
+            value={filters.status}
+            onChange={handleFilterStatus}
+            sx={{
+              px: 2.5,
+              boxShadow: (theme) => `inset 0 -2px 0 0 ${alpha(theme.palette.grey[500], 0.08)}`,
+            }}
+          >
+            {STATUS_OPTIONS.map((tab) => (
+              <Tab
+                key={tab.value}
+                iconPosition="end"
+                value={tab.value}
+                label={tab.label}
+                icon={
+                  <Label
+                    variant={
+                      ((tab.value === 'all' || tab.value === filters.status) && 'filled') || 'soft'
+                    }
+                    color={
+                      (tab.value === 'active' && 'success') ||
+                      (tab.value === 'inactive' && 'error') ||
+                      'default'
+                    }
+                  >
+                    {tab.value === 'all' && tableData.length}
+                    {tab.value === 'active' &&
+                      tableData.filter((product) => product.is_active).length}
+                    {tab.value === 'inactive' &&
+                      tableData.filter((product) => !product.is_active).length}
+                  </Label>
+                }
+              />
+            ))}
+          </Tabs>
+
           <ProductTableToolbar
             filters={filters}
             onFilters={handleFilters}
-            //
-            stockOptions={PRODUCT_STOCK_OPTIONS}
-            publishOptions={PUBLISH_OPTIONS}
+            onRefresh={fetchProducts}
           />
 
-          {canReset && (
-            <ProductTableFiltersResult
-              filters={filters}
-              onFilters={handleFilters}
-              //
-              onResetFilters={handleResetFilters}
-              //
-              results={dataFiltered.length}
-              sx={{ p: 2.5, pt: 0 }}
-            />
-          )}
-
           <TableContainer sx={{ position: 'relative', overflow: 'unset' }}>
-            <TableSelectedAction
-              dense={table.dense}
-              numSelected={table.selected.length}
-              rowCount={tableData.length}
-              onSelectAllRows={(checked) =>
-                table.onSelectAllRows(
-                  checked,
-                  tableData.map((row) => row.id)
-                )
-              }
-              action={
-                <Tooltip title="Delete">
-                  <IconButton color="primary" onClick={confirm.onTrue}>
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                  </IconButton>
-                </Tooltip>
-              }
-            />
-
             <Scrollbar>
               <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                 <TableHeadCustom
@@ -255,36 +312,28 @@ export default function ProductListView() {
                   onSelectAllRows={(checked) =>
                     table.onSelectAllRows(
                       checked,
-                      tableData.map((row) => row.id)
+                      tableData.map((row) => row._id)
                     )
                   }
                 />
 
                 <TableBody>
-                  {productsStatus.loading ? (
-                    [...Array(table.rowsPerPage)].map((i, index) => (
-                      <TableSkeleton key={index} sx={{ height: denseHeight }} />
-                    ))
-                  ) : (
-                    <>
-                      {dataFiltered
-                        .slice(
-                          table.page * table.rowsPerPage,
-                          table.page * table.rowsPerPage + table.rowsPerPage
-                        )
-                        .map((row) => (
-                          <ProductTableRow
-                            key={row.id}
-                            row={row}
-                            selected={table.selected.includes(row.id)}
-                            onSelectRow={() => table.onSelectRow(row.id)}
-                            onDeleteRow={() => handleDeleteRow(row.id)}
-                            onEditRow={() => handleEditRow(row.id)}
-                            onViewRow={() => handleViewRow(row.id)}
-                          />
-                        ))}
-                    </>
-                  )}
+                  {dataFiltered
+                    .slice(
+                      table.page * table.rowsPerPage,
+                      table.page * table.rowsPerPage + table.rowsPerPage
+                    )
+                    .map((row) => (
+                      <ProductTableRow
+                        key={row._id}
+                        row={row}
+                        selected={table.selected.includes(row._id)}
+                        onSelectRow={() => table.onSelectRow(row._id)}
+                        onDeleteRow={() => handleDeleteRow(row._id)}
+                        onEditRow={() => handleEditRow(row._id)}
+                        onToggleStatus={() => handleToggleStatus(row._id, row.is_active)}
+                      />
+                    ))}
 
                   <TableEmptyRows
                     height={denseHeight}
@@ -303,75 +352,11 @@ export default function ProductListView() {
             rowsPerPage={table.rowsPerPage}
             onPageChange={table.onChangePage}
             onRowsPerPageChange={table.onChangeRowsPerPage}
-            //
             dense={table.dense}
             onChangeDense={table.onChangeDense}
           />
         </Card>
       </Container>
-
-      <ConfirmDialog
-        open={confirm.value}
-        onClose={confirm.onFalse}
-        title="Delete"
-        content={
-          <>
-            Are you sure want to delete <strong> {table.selected.length} </strong> items?
-          </>
-        }
-        action={
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => {
-              handleDeleteRows();
-              confirm.onFalse();
-            }}
-          >
-            Delete
-          </Button>
-        }
-      />
     </>
   );
-}
-
-// ----------------------------------------------------------------------
-
-function applyFilter({
-  inputData,
-  comparator,
-  filters,
-}: {
-  inputData: IProduct[];
-  comparator: (a: any, b: any) => number;
-  filters: IProductTableFilters;
-}) {
-  const { name, stock, publish } = filters;
-
-  const stabilizedThis = inputData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  inputData = stabilizedThis.map((el) => el[0]);
-
-  if (name) {
-    inputData = inputData.filter(
-      (product) => product.name.toLowerCase().indexOf(name.toLowerCase()) !== -1
-    );
-  }
-
-  if (stock.length) {
-    inputData = inputData.filter((product) => stock.includes(product.inventoryType));
-  }
-
-  if (publish.length) {
-    inputData = inputData.filter((product) => publish.includes(product.publish));
-  }
-
-  return inputData;
 }

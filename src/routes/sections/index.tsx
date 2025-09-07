@@ -13,25 +13,26 @@ import { JwtLoginView } from 'src/sections/auth/jwt';
 import { AuthGuard } from 'src/auth/guard';
 import DashboardLayout from 'src/layouts/dashboard';
 
+// 🆕 CATEGORY
+const CategoryListPage = lazy(() => import('src/pages/dashboard/category/list'));
+
 //  STORE
-const ListStore = lazy(()=> import('src/pages/dashboard/store/list'))
-const EditStore = lazy(()=> import('src/pages/dashboard/store/edit'))
-const NewStore = lazy(()=> import('src/pages/dashboard/store/create'))
+const ListStore = lazy(() => import('src/pages/dashboard/store/list'))
+const EditStore = lazy(() => import('src/pages/dashboard/store/edit'))
+const NewStore = lazy(() => import('src/pages/dashboard/store/create'))
 
 // EMPLOYEE
-const ListEmployee = lazy(()=> import('src/pages/dashboard/employee/list'))
-const EditEmployee = lazy(()=> import('src/pages/dashboard/employee/edit'))
-const NewEmployee = lazy(()=> import('src/pages/dashboard/employee/create'))
+const ListEmployee = lazy(() => import('src/pages/dashboard/employee/list'))
+const EditEmployee = lazy(() => import('src/pages/dashboard/employee/edit'))
+const NewEmployee = lazy(() => import('src/pages/dashboard/employee/create'))
 
 // OVERVIEW
 const IndexPage = lazy(() => import('src/pages/dashboard/app'));
 const OverviewAnalyticsPage = lazy(() => import('src/pages/dashboard/analytics'));
 const OverviewFilePage = lazy(() => import('src/pages/dashboard/file'));
 // PRODUCT
-const ProductDetailsPage = lazy(() => import('src/pages/dashboard/product/details'));
 const ProductListPage = lazy(() => import('src/pages/dashboard/product/list'));
-const ProductCreatePage = lazy(() => import('src/pages/dashboard/product/new'));
-const ProductEditPage = lazy(() => import('src/pages/dashboard/product/edit'));
+
 // ORDER
 const OrderListPage = lazy(() => import('src/pages/dashboard/order/list'));
 const OrderDetailsPage = lazy(() => import('src/pages/dashboard/order/details'));
@@ -52,7 +53,7 @@ const ChatPage = lazy(() => import('src/pages/dashboard/chat'));
 // ----------------------------------------------------------------------
 export default function Router() {
   return useRoutes([
-   {
+    {
       path: '/',
       element: <Navigate to="/dashboard/app" replace />,
     },
@@ -91,17 +92,25 @@ export default function Router() {
             { element: <ListStore />, index: true },
             { path: 'list', element: <ListStore /> },
             { path: 'edit/:id', element: <EditStore /> },
-            { path: 'new', element: <NewStore /> } 
+            { path: 'new', element: <NewStore /> }
           ],
         },
 
-         {
+        {
+          path: 'category',
+          children: [
+            { element: <CategoryListPage />, index: true },
+            { path: 'list', element: <CategoryListPage /> },
+          ],
+        },
+
+        {
           path: 'employee',
           children: [
             { element: <ListEmployee />, index: true },
             { path: 'list', element: <ListEmployee /> },
             { path: 'edit/:id', element: <EditEmployee /> },
-            { path: 'new', element: <NewEmployee /> } 
+            { path: 'new', element: <NewEmployee /> }
           ],
         },
 
@@ -121,9 +130,6 @@ export default function Router() {
           children: [
             { element: <ProductListPage />, index: true },
             { path: 'list', element: <ProductListPage /> },
-            { path: ':id', element: <ProductDetailsPage /> },
-            { path: 'new', element: <ProductCreatePage /> },
-            { path: ':id/edit', element: <ProductEditPage /> },
           ],
         },
         {

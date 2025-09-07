@@ -1,8 +1,9 @@
 import axios from 'src/utils/axios';
 import type { ICompanyItem } from 'src/types/company';
 import type { IStoreItem, StoreFormValues, StoreListResponse } from 'src/types/store';
-import type { EmployeeRole,Cashier, Supervisor, EmployeeFormValues, EmployeeListResponse } from 'src/types/employee';
-
+import type { EmployeeRole, Cashier, Supervisor, EmployeeFormValues, EmployeeListResponse } from 'src/types/employee';
+import type { ICategory, ICategoryFormValues, CategoryListResponse, CategoryResponse } from 'src/types/category';
+import type { IProductItem, ProductListResponse } from 'src/types/product';
 type LoginCredentials = {
   phone: string;
   password: string;
@@ -58,7 +59,22 @@ export type OwnerProfileResponse = {
   companies: Company[];
   stores: Store[];
   supervisedStore: Store | null;
-}; 
+};
+
+
+
+
+// Interface pour les paramètres de requête des catégories
+interface CategoryQueryParams {
+  storeId?: string;
+  withProducts?: boolean;
+  parentId?: string | null;
+  is_active?: boolean;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 
 export const authRequests = {
   loginOwner: async (credentials: LoginCredentials): Promise<UserResponse> => {
@@ -71,7 +87,7 @@ export const authRequests = {
     await axios.get('/api/user/logout');
   },
 
- 
+
   getOwnerData: async (): Promise<OwnerProfileResponse> => {
     const response = await axios.get('/api/user/owner-data');
     return response.data;
@@ -147,7 +163,7 @@ export const handleApiError = (error: any) => {
 export const storeRequests = {
   createStore: async (storeData: StoreFormValues): Promise<IStoreItem> => {
     const formData = new FormData();
-    
+
     // Champs obligatoires
     formData.append('name', storeData.name);
     formData.append('contact[phone]', storeData.contact.phone);
@@ -155,7 +171,7 @@ export const storeRequests = {
     formData.append('contact[address][country]', storeData.contact.address.country || 'Haïti');
     formData.append('is_active', String(storeData.is_active ?? true));
 
-    
+
     // Gestion de la photo
     if (storeData.photo instanceof File) {
       formData.append('photo', storeData.photo);
@@ -171,7 +187,7 @@ export const storeRequests = {
 
   updateStore: async (id: string, storeData: Partial<StoreFormValues>): Promise<IStoreItem> => {
     const formData = new FormData();
-    
+
     // Champs modifiables
     if (storeData.name) formData.append('name', storeData.name);
     if (storeData.contact?.phone) formData.append('contact[phone]', storeData.contact.phone);
@@ -179,11 +195,11 @@ export const storeRequests = {
     if (storeData.contact?.address?.country) {
       formData.append('contact[address][country]', storeData.contact.address.country);
     }
-    
+
     if (storeData.supervisor_id) {
       formData.append('supervisor_id', storeData.supervisor_id);
     }
-    
+
     // Gestion de la photo
     if (storeData.photo instanceof File) {
       formData.append('photo', storeData.photo);
@@ -234,18 +250,18 @@ export const employeeRequests = {
   // Créer un nouvel employé (cashier ou supervisor)
   createEmployee: async (employeeData: EmployeeFormValues): Promise<Cashier | Supervisor> => {
     const formData = new FormData();
-    
+
     // Champs obligatoires
     formData.append('first_name', employeeData.first_name);
     formData.append('last_name', employeeData.last_name);
     formData.append('phone', employeeData.phone);
     formData.append('role', employeeData.role);
     formData.append('password', employeeData.password || ''); // Mot de passe temporaire
-    
+
     // Champs conditionnels
     if (employeeData.email) formData.append('email', employeeData.email);
     if (employeeData.pin_code) formData.append('pin_code', employeeData.pin_code);
-    
+
     // Gestion spécifique au rôle
     if (employeeData.role === 'cashier' && employeeData.store_id) {
       formData.append('storeIds[]', employeeData.store_id);
@@ -264,7 +280,7 @@ export const employeeRequests = {
   // Mettre à jour un employé existant
   updateEmployee: async (id: string, employeeData: Partial<EmployeeFormValues>): Promise<Cashier | Supervisor> => {
     const formData = new FormData();
-    
+
     // Champs modifiables
     if (employeeData.first_name) formData.append('first_name', employeeData.first_name);
     if (employeeData.last_name) formData.append('last_name', employeeData.last_name);
@@ -272,7 +288,7 @@ export const employeeRequests = {
     if (employeeData.email) formData.append('email', employeeData.email);
     if (employeeData.role) formData.append('role', employeeData.role);
     if (employeeData.pin_code) formData.append('pin_code', employeeData.pin_code);
-    
+
     // Gestion spécifique au rôle
     if (employeeData.role === 'cashier' && employeeData.store_id) {
       formData.append('storeIds[]', employeeData.store_id);
@@ -307,14 +323,303 @@ export const employeeRequests = {
   },
 
   // Activer/désactiver un employé
- toggleEmployeeStatus: async (id: string, activate: boolean): Promise<Cashier | Supervisor> => {
-  const endpoint = activate ? 'activate' : 'deactivate';
-  const response = await axios.patch(`/api/owner/employees/${id}/${endpoint}`);
-  return response.data; // Retourne l'employé mis à jour
-},
+  toggleEmployeeStatus: async (id: string, activate: boolean): Promise<Cashier | Supervisor> => {
+    const endpoint = activate ? 'activate' : 'deactivate';
+    const response = await axios.patch(`/api/owner/employees/${id}/${endpoint}`);
+    return response.data; // Retourne l'employé mis à jour
+  },
 
   // Supprimer un employé
   deleteEmployee: async (id: string): Promise<void> => {
     await axios.delete(`/api/owner/employees/${id}`);
   }
+};
+
+
+export const categoryRequests = {
+  // Créer une nouvelle catégorie
+  createCategory: async (categoryData: ICategoryFormValues): Promise<ICategory> => {
+    const payload = {
+      name: categoryData.name,
+      parent_id: categoryData.parent_id || null,
+      color: categoryData.color || '#4CAF50',
+      icon: categoryData.icon || 'other',
+      storeIds: categoryData.storeIds || [],
+    };
+
+    const response = await axios.post('/api/owner/categories', payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    return response.data.data; // Backend retourne { success: true, data: category }
+  },
+
+  // Mettre à jour une catégorie existante
+  updateCategory: async (id: string, categoryData: Partial<ICategoryFormValues>): Promise<ICategory> => {
+    const payload: any = {};
+    
+    // Champs modifiables
+    if (categoryData.name) payload.name = categoryData.name;
+    if (categoryData.color) payload.color = categoryData.color;
+    if (categoryData.icon) payload.icon = categoryData.icon;
+    
+    // Gestion des stores à ajouter
+    if (categoryData.storeIds && categoryData.storeIds.length > 0) {
+      payload.storeIds = categoryData.storeIds;
+    }
+    
+    // Gestion des stores à retirer (nouvelle fonctionnalité du backend)
+    if (categoryData.storeRemove && categoryData.storeRemove.length > 0) {
+      payload.storeRemove = categoryData.storeRemove;
+    }
+
+    const response = await axios.patch(`/api/categories/${id}`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    return response.data.data;
+  },
+
+  // Lister les catégories avec filtres
+  getCategories: async (params?: CategoryQueryParams): Promise<CategoryListResponse> => {
+    const queryParams: any = {};
+    
+    if (params?.storeId) queryParams.storeId = params.storeId;
+    if (params?.withProducts !== undefined) queryParams.withProducts = params.withProducts;
+    if (params?.parentId !== undefined) queryParams.parentId = params.parentId;
+    if (params?.is_active !== undefined) queryParams.is_active = params.is_active;
+    if (params?.page) queryParams.page = params.page;
+    if (params?.limit) queryParams.limit = params.limit;
+    if (params?.search) queryParams.search = params.search;
+
+    const response = await axios.get('/api/owner/categories', { params: queryParams });
+    
+    return {
+      success: response.data.success,
+      data: response.data.data,
+      meta: response.data.meta
+    };
+  },
+
+  // Obtenir les détails d'une catégorie spécifique
+  getCategoryDetails: async (id: string): Promise<ICategory> => {
+    const response = await axios.get(`/api/owner/categories/${id}`);
+    return response.data.data;
+  },
+
+  // Désactiver une catégorie
+  deactivateCategory: async (id: string): Promise<ICategory> => {
+    const response = await axios.patch(`/api/owner/categories/${id}/deactivate`);
+    return response.data.data;
+  },
+
+  // Réactiver une catégorie
+  reactivateCategory: async (id: string): Promise<ICategory> => {
+    const response = await axios.patch(`/api/owner/categories/${id}/reactivate`);
+    return response.data.data;
+  },
+
+  // Supprimer définitivement une catégorie (si implémenté côté backend)
+  deleteCategory: async (id: string): Promise<void> => {
+    await axios.delete(`/api/owner/categories/${id}`);
+  },
+
+  // Actions spécialisées pour les relations avec les stores
+  
+  // Ajouter des stores à une catégorie
+  addStoresToCategory: async (categoryId: string, storeIds: string[]): Promise<ICategory> => {
+    const response = await axios.patch(`/api/owner/categories/${categoryId}`, {
+      storeIds
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data.data;
+  },
+
+  // Retirer des stores d'une catégorie
+  removeStoresFromCategory: async (categoryId: string, storeIds: string[]): Promise<ICategory> => {
+    const response = await axios.patch(`/api/owner/categories/${categoryId}`, {
+      storeRemove: storeIds
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data.data;
+  },
+
+  // Obtenir toutes les catégories d'un store spécifique
+  getCategoriesByStore: async (storeId: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ storeId });
+  },
+
+  // Obtenir l'arbre hiérarchique des catégories
+  getCategoryTree: async (storeId?: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ 
+      storeId, 
+      is_active: true 
+    });
+  },
+
+  // Obtenir les catégories racines (sans parent)
+  getRootCategories: async (storeId?: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ 
+      storeId,
+      parentId: null,
+      is_active: true
+    });
+  },
+
+  // Obtenir les sous-catégories d'une catégorie parent
+  getChildCategories: async (parentId: string, storeId?: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ 
+      parentId,
+      storeId,
+      is_active: true
+    });
+  },
+
+  // Rechercher des catégories par nom
+  searchCategories: async (searchTerm: string, storeId?: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ 
+      search: searchTerm,
+      storeId
+    });
+  },
+
+  // Obtenir les catégories avec leurs produits
+  getCategoriesWithProducts: async (storeId?: string): Promise<CategoryListResponse> => {
+    return categoryRequests.getCategories({ 
+      storeId,
+      withProducts: true,
+      is_active: true
+    });
+  },
+
+  // Statistiques et métriques
+  
+  // Obtenir le nombre total de catégories
+  getCategoryCount: async (): Promise<{ total: number; active: number; inactive: number }> => {
+    const [allCategories, activeCategories] = await Promise.all([
+      categoryRequests.getCategories(),
+      categoryRequests.getCategories({ is_active: true })
+    ]);
+    
+    return {
+      total: allCategories.data.length,
+      active: activeCategories.data.length,
+      inactive: allCategories.data.length - activeCategories.data.length
+    };
+  },
+
+  // Vérifier si une catégorie peut être supprimée (pas d'enfants actifs)
+  canDeleteCategory: async (categoryId: string): Promise<boolean> => {
+    try {
+      const children = await categoryRequests.getChildCategories(categoryId);
+      return children.data.length === 0;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  // Obtenir le chemin complet d'une catégorie (breadcrumb)
+  getCategoryPath: async (categoryId: string): Promise<ICategory[]> => {
+    const category = await categoryRequests.getCategoryDetails(categoryId);
+    const path: ICategory[] = [category];
+    
+    let current = category;
+    while (current.parent_id) {
+      try {
+        const parent = await categoryRequests.getCategoryDetails(current.parent_id);
+        path.unshift(parent);
+        current = parent;
+      } catch (error) {
+        break; // Parent non trouvé, arrêter
+      }
+    }
+    
+    return path;
+  },
+
+  // Validation et helpers
+  
+  // Vérifier si le nom de catégorie est unique (dans la même entreprise et au même niveau)
+  validateCategoryName: async (name: string, parentId?: string | null, excludeId?: string): Promise<boolean> => {
+    try {
+      const categories = await categoryRequests.getCategories({ parentId });
+      const existingCategory = categories.data.find(cat => 
+        cat.name.toLowerCase() === name.toLowerCase() && 
+        cat._id !== excludeId
+      );
+      return !existingCategory;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  // Valider qu'un parent existe et est valide
+  validateParentCategory: async (parentId: string): Promise<boolean> => {
+    try {
+      const parent = await categoryRequests.getCategoryDetails(parentId);
+      return parent.is_active;
+    } catch (error) {
+      return false;
+    }
+  }
+};
+
+
+export const productRequests = {
+  // Créer un nouveau produit
+  createProduct: async (productData: FormData): Promise<IProductItem> => {
+    const response = await axios.post('/api/owner/products', productData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Obtenir tous les produits
+  getProducts: async (params?: {
+    page?: number;
+    limit?: number;
+    storeId?: string;
+    categoryId?: string;
+    type?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<ProductListResponse> => {
+    const response = await axios.get('/api/owner/products', { params });
+    return response.data;
+  },
+
+  // Mettre à jour un produit
+  updateProduct: async (id: string, productData: FormData): Promise<IProductItem> => {
+    const response = await axios.patch(`/api/owner/products/${id}`, productData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Désactiver un produit
+  deactivateProduct: async (id: string): Promise<IProductItem> => {
+    const response = await axios.delete(`/api/owner/products/${id}`);
+    return response.data;
+  },
+
+  // Réactiver un produit
+  reactivateProduct: async (id: string): Promise<IProductItem> => {
+    const response = await axios.patch(`/api/owner/products/${id}/reactivate`);
+    return response.data;
+  },
 };

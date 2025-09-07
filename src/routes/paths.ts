@@ -51,7 +51,7 @@ export const paths = {
   },
   // AUTH
   auth: {
-   
+
     jwt: {
       login: `${ROOTS.AUTH}/jwt/login`,
       register: `${ROOTS.AUTH}/jwt/register`,
@@ -62,7 +62,7 @@ export const paths = {
   dashboard: {
     root: ROOTS.DASHBOARD,
     chat: `${ROOTS.DASHBOARD}/chat`,
-  
+
     general: {
       app: `${ROOTS.DASHBOARD}/app`,
       analytics: `${ROOTS.DASHBOARD}/analytics`,
@@ -75,15 +75,20 @@ export const paths = {
       account: `${ROOTS.DASHBOARD}/user/account`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/user/${id}/edit`,
     },
+
+    category: {
+      root: `${ROOTS.DASHBOARD}/category`,
+      list: `${ROOTS.DASHBOARD}/category/list`,
+      new: `${ROOTS.DASHBOARD}/category/new`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/category/edit/${id}`,
+      details: (id: string) => `${ROOTS.DASHBOARD}/category/${id}`,
+    },
     product: {
       root: `${ROOTS.DASHBOARD}/product`,
+      list: `${ROOTS.DASHBOARD}/product/list`,
       new: `${ROOTS.DASHBOARD}/product/new`,
       details: (id: string) => `${ROOTS.DASHBOARD}/product/${id}`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/product/${id}/edit`,
-      demo: {
-        details: `${ROOTS.DASHBOARD}/product/${MOCK_ID}`,
-        edit: `${ROOTS.DASHBOARD}/product/${MOCK_ID}/edit`,
-      },
     },
     invoice: {
       root: `${ROOTS.DASHBOARD}/invoice`,
@@ -114,6 +119,8 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/employee/list`, // Chemin distinct
       new: `${ROOTS.DASHBOARD}/employee/new`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/employee/edit/${id}`
-    }
+    },
+
+
   },
 };
