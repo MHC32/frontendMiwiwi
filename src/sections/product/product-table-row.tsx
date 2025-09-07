@@ -1,3 +1,5 @@
+// src/sections/product/product-table-row.tsx - Mise à jour avec édition rapide
+import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
@@ -17,6 +19,8 @@ import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 import CustomPopover, { usePopover } from 'src/components/custom-popover';
 import { ConfirmDialog } from 'src/components/custom-dialog';
+//
+import ProductQuickEditForm from './product-quick-edit-form';
 
 // ----------------------------------------------------------------------
 
@@ -26,7 +30,8 @@ type Props = {
   onSelectRow: VoidFunction;
   onDeleteRow: VoidFunction;
   onEditRow: VoidFunction;
-  onToggleStatus: VoidFunction;
+  onToggleStatus: (currentStatus: boolean) => void;
+  onRefresh?: VoidFunction;
 };
 
 export default function ProductTableRow({
@@ -36,17 +41,20 @@ export default function ProductTableRow({
   onSelectRow,
   onDeleteRow,
   onToggleStatus,
+  onRefresh,
 }: Props) {
   const { _id, name, barcode, type, store_id, category_id, is_active, main_image, inventory, pricing } = row;
 
   const confirm = useBoolean();
   const popover = usePopover();
+  const quickEdit = useBoolean();
 
   const getTypeLabel = (productType: string) => {
     switch (productType) {
       case 'weight': return 'Poids';
+      case 'volume': return 'Volume';
+      case 'quantity': return 'Quantité';
       case 'fuel': return 'Carburant';
-      case 'unit': return 'Unité';
       default: return productType;
     }
   };
@@ -54,8 +62,9 @@ export default function ProductTableRow({
   const getTypeColor = (productType: string) => {
     switch (productType) {
       case 'weight': return 'info';
+      case 'volume': return 'info';
+      case 'quantity': return 'success';
       case 'fuel': return 'warning';
-      case 'unit': return 'success';
       default: return 'default';
     }
   };
@@ -66,6 +75,10 @@ export default function ProductTableRow({
       currency: 'HTG'
     }).format(price);
   };
+
+  // Pour les produits fuel, pas d'inventory
+  const hasInventory = type !== 'fuel';
+  const isLowStock = hasInventory && inventory && inventory.current <= (inventory.min_stock || 0);
 
   return (
     <>
@@ -83,9 +96,9 @@ export default function ProductTableRow({
               bgcolor: is_active ? 'primary.main' : 'grey.500'
             }}
           >
-            <Iconify icon="solar:box-bold" />
+            {name.charAt(0).toUpperCase()}
           </Avatar>
-          
+
           <div>
             <Typography variant="subtitle2" noWrap>
               {name}
@@ -99,46 +112,68 @@ export default function ProductTableRow({
         </TableCell>
 
         <TableCell>
-          <Chip 
-            label={getTypeLabel(type)}
+          <Label 
+            variant="soft" 
             color={getTypeColor(type) as any}
-            size="small"
-            variant="soft"
-          />
+          >
+            {getTypeLabel(type)}
+          </Label>
         </TableCell>
 
         <TableCell>
           <Typography variant="body2">
-            {store_id?.name || 'Non assigné'}
+            {store_id.name}
           </Typography>
         </TableCell>
 
         <TableCell>
-          <Typography variant="body2">
-            {category_id?.name || 'Aucune'}
-          </Typography>
-        </TableCell>
-
-        <TableCell align="right">
-          <Typography variant="body2">
-            {inventory.current} {row.unit}
-          </Typography>
-          {inventory.current <= inventory.min_stock && (
-            <Label color="error" variant="soft">
-              Stock faible
-            </Label>
-          )}
-        </TableCell>
-
-        <TableCell align="right">
-          <Typography variant="body2" fontWeight="medium">
-            {formatPrice(pricing.base_price)}
-          </Typography>
-          {pricing.mode === 'fuel' && pricing.fuel_config && (
-            <Typography variant="caption" color="text.secondary">
-              /{pricing.fuel_config.display_unit}
+          {category_id ? (
+            <Chip 
+              label={category_id.name} 
+              variant="outlined" 
+              size="small"
+              sx={{ maxWidth: 120 }}
+            />
+          ) : (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              -
             </Typography>
           )}
+        </TableCell>
+
+        <TableCell align="right">
+          {hasInventory ? (
+            <>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: isLowStock ? 'error.main' : 'text.primary',
+                  fontWeight: isLowStock ? 'bold' : 'normal'
+                }}
+              >
+                {inventory?.current ?? 0}
+              </Typography>
+              {isLowStock && (
+                <Tooltip title="Stock faible">
+                  <Iconify 
+                    icon="eva:alert-triangle-fill" 
+                    sx={{ color: 'warning.main', ml: 0.5 }}
+                    width={16}
+                  />
+                </Tooltip>
+              )}
+            </>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+              N/A
+            </Typography>
+          )}
+        </TableCell>
+
+        <TableCell align="right">
+          <Typography variant="body2">
+            {formatPrice(pricing?.base_price ?? 0)}
+          </Typography>
         </TableCell>
 
         <TableCell>
@@ -151,6 +186,15 @@ export default function ProductTableRow({
         </TableCell>
 
         <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
+          <Tooltip title="Modification rapide" placement="top" arrow>
+            <IconButton
+              color={quickEdit.value ? 'inherit' : 'default'}
+              onClick={quickEdit.onTrue}
+            >
+              <Iconify icon="solar:pen-bold" />
+            </IconButton>
+          </Tooltip>
+
           <IconButton color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
             <Iconify icon="eva:more-vertical-fill" />
           </IconButton>
@@ -175,11 +219,21 @@ export default function ProductTableRow({
 
         <MenuItem
           onClick={() => {
-            onToggleStatus();
+            quickEdit.onTrue();
             popover.onClose();
           }}
         >
-          <Iconify icon={is_active ? "solar:eye-closed-bold" : "solar:eye-bold"} />
+          <Iconify icon="solar:settings-bold" />
+          Édition rapide
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            onToggleStatus(is_active);
+            popover.onClose();
+          }}
+        >
+          <Iconify icon={is_active ? "eva:eye-off-fill" : "eva:eye-fill"} />
           {is_active ? 'Désactiver' : 'Activer'}
         </MenuItem>
 
@@ -199,12 +253,29 @@ export default function ProductTableRow({
         open={confirm.value}
         onClose={confirm.onFalse}
         title="Supprimer le produit"
-        content="Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible."
+        content="Êtes-vous sûr de vouloir supprimer ce produit ? Cette action ne peut pas être annulée."
         action={
-          <Button variant="contained" color="error" onClick={onDeleteRow}>
-            Confirmer
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              onDeleteRow();
+              confirm.onFalse();
+            }}
+          >
+            Supprimer
           </Button>
         }
+      />
+
+      <ProductQuickEditForm
+        currentProduct={row}
+        open={quickEdit.value}
+        onClose={quickEdit.onFalse}
+        onSuccess={() => {
+          onRefresh?.();
+          quickEdit.onFalse();
+        }}
       />
     </>
   );

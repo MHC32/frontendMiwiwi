@@ -11,5 +11,6 @@ export { default as RHFRadioGroup } from './rhf-radio-group';
 export { default as RHFAutocomplete } from './rhf-autocomplete';
 export {default as RHFStoreAutocomplete} from './RHFStoreAutocomplete';
 export { default as RHFCompanyAutocomplete } from './RHFCompanyAutocomplete';
+export { default as RHFMultiUpload } from './RHFMultiUpload';
 
 export { default } from './form-provider';

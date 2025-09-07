@@ -198,11 +198,25 @@ export const createProduct = (productData: FormData) => async (dispatch: AppDisp
   }
 };
 
-export const updateProduct = (id: string, productData: FormData) => async (dispatch: AppDispatch) => {
+export const updateProduct = ({ id, data }: { id: string; data: FormData }) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(startLoading());
+      const response = await productRequests.updateProduct(id, data);
+      dispatch(updateProductSuccess(response));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      dispatch(hasError(errorMessage));
+      throw error;
+    }
+  };
+
+export const getProductById = (id: string) => async (dispatch: AppDispatch) => {
   try {
     dispatch(startLoading());
-    const response = await productRequests.updateProduct(id, productData);
-    dispatch(updateProductSuccess(response));
+    const response = await productRequests.getProductById(id);
+    dispatch(getProductSuccess(response));
     return response;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -211,7 +225,7 @@ export const updateProduct = (id: string, productData: FormData) => async (dispa
   }
 };
 
-export const deleteProduct = (id: string) => async (dispatch: AppDispatch) => {
+export const deactivateProduct = (id: string) => async (dispatch: AppDispatch) => {
   try {
     dispatch(startLoading());
     await productRequests.deactivateProduct(id);
@@ -227,21 +241,7 @@ export const activateProduct = (id: string) => async (dispatch: AppDispatch) => 
   try {
     dispatch(startLoading());
     const response = await productRequests.reactivateProduct(id);
-    dispatch(toggleProductStatusSuccess(response));
-    return response;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-    dispatch(hasError(errorMessage));
-    throw error;
-  }
-};
-
-export const deactivateProduct = (id: string) => async (dispatch: AppDispatch) => {
-  try {
-    dispatch(startLoading());
-    const response = await productRequests.deactivateProduct(id);
-    dispatch(toggleProductStatusSuccess(response));
-    return response;
+    dispatch(updateProductSuccess(response));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     dispatch(hasError(errorMessage));

@@ -90,98 +90,83 @@ export default function ProductListView() {
   const router = useRouter();
   const confirm = useBoolean();
   const { enqueueSnackbar } = useSnackbar();
+
+  // ✅ Utilisation des données Redux uniquement
   const { products, loading, pagination } = useProduct();
 
-  const [tableData, setTableData] = useState<IProductItem[]>([]);
   const [filters, setFilters] = useState<IProductTableFilters>(defaultFilters);
-  const [isLoading, setIsLoading] = useState(true);
 
+  // ✅ Fonction pour récupérer les produits via Redux
   const fetchProducts = useCallback(async () => {
     try {
-      setIsLoading(true);
-      const response = await productRequests.getProducts({
+      await dispatch(getProducts({
         page: table.page + 1,
         limit: table.rowsPerPage,
         search: filters.name,
         type: filters.type === 'all' ? undefined : filters.type,
         storeId: filters.store_id.length ? filters.store_id[0] : undefined,
         categoryId: filters.category_id.length ? filters.category_id[0] : undefined,
-      });
-      setTableData(response.data);
+      }));
     } catch (error) {
       console.error('Failed to fetch products:', error);
       enqueueSnackbar('Erreur lors du chargement des produits', { variant: 'error' });
-    } finally {
-      setIsLoading(false);
     }
-  }, [filters, table.page, table.rowsPerPage, enqueueSnackbar]);
+  }, [dispatch, filters, table.page, table.rowsPerPage, enqueueSnackbar]);
 
+  // ✅ Chargement initial
   useEffect(() => {
-    // ✅ Correction: Dispatch l'action correctement
-    dispatch(getProducts({
-      page: 1,
-      limit: 10,
-      search: '',
-    }));
-  }, [dispatch]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleToggleStatus = useCallback(async (id: string, currentStatus: boolean) => {
     try {
-      // Mise à jour optimiste
-      setTableData(prev => prev.map(product =>
-        product._id === id ? { ...product, is_active: !currentStatus } : product
-      ));
-
       const action = currentStatus ? 'deactivateProduct' : 'reactivateProduct';
       await productRequests[action](id);
 
+      // ✅ Refetch via Redux après modification
       await fetchProducts();
 
       enqueueSnackbar(`Produit ${currentStatus ? 'désactivé' : 'activé'} avec succès`, {
         variant: 'success'
       });
     } catch (error) {
-      // Annuler la modification optimiste
-      setTableData(prev => prev.map(product =>
-        product._id === id ? { ...product, is_active: currentStatus } : product
-      ));
-
       console.error('Failed to toggle product status:', error);
       enqueueSnackbar('Erreur lors du changement de statut', { variant: 'error' });
     }
   }, [enqueueSnackbar, fetchProducts]);
 
-  const dataFiltered = tableData.filter(product => {
+  // ✅ Utilisation des données Redux pour le filtrage
+  const dataFiltered = products.filter(product => {
     // Filtre par statut
     if (filters.status !== 'all') {
       const isActive = filters.status === 'active';
       if (product.is_active !== isActive) return false;
     }
-    
+
     // Filtre par type
     if (filters.type !== 'all') {
       if (product.type !== filters.type) return false;
     }
-    
+
     // Filtre par magasin
     if (filters.store_id.length > 0) {
       if (!filters.store_id.includes(product.store_id._id)) return false;
     }
-    
+
     // Filtre par catégorie
     if (filters.category_id.length > 0) {
       if (!product.category_id || !filters.category_id.includes(product.category_id._id)) return false;
     }
-    
+
     // Recherche par nom/code-barres
     if (filters.name) {
       const searchLower = filters.name.toLowerCase();
-      if (!product.name.toLowerCase().includes(searchLower) && 
-          !product.barcode?.toLowerCase().includes(searchLower)) {
+      if (!product.name.toLowerCase().includes(searchLower) &&
+        !product.barcode?.toLowerCase().includes(searchLower)) {
         return false;
       }
     }
-    
+
     return true;
   });
 
@@ -234,13 +219,19 @@ export default function ProductListView() {
     [handleFilters]
   );
 
+  // ✅ Debug pour vérifier les données
+  console.log('Products from Redux:', products);
+  console.log('Loading:', loading);
+  console.log('Filtered data:', dataFiltered);
+
   return (
     <>
       <Container maxWidth={settings.themeStretch ? false : 'lg'}>
         <CustomBreadcrumbs
-          heading="Produits"
+          heading="Liste des produits"
           links={[
-            { name: 'Dashboard', href: paths.dashboard.root },
+            { name: 'Tableau de bord', href: paths.dashboard.root },
+            { name: 'Produits', href: paths.dashboard.product.root },
             { name: 'Liste' },
           ]}
           action={
@@ -253,7 +244,9 @@ export default function ProductListView() {
               Nouveau produit
             </Button>
           }
-          sx={{ mb: { xs: 3, md: 5 } }}
+          sx={{
+            mb: { xs: 3, md: 5 },
+          }}
         />
 
         <Card>
@@ -282,11 +275,9 @@ export default function ProductListView() {
                       'default'
                     }
                   >
-                    {tab.value === 'all' && tableData.length}
-                    {tab.value === 'active' &&
-                      tableData.filter((product) => product.is_active).length}
-                    {tab.value === 'inactive' &&
-                      tableData.filter((product) => !product.is_active).length}
+                    {tab.value === 'all' && products.length}
+                    {tab.value === 'active' && products.filter(product => product.is_active).length}
+                    {tab.value === 'inactive' && products.filter(product => !product.is_active).length}
                   </Label>
                 }
               />
@@ -306,38 +297,29 @@ export default function ProductListView() {
                   order={table.order}
                   orderBy={table.orderBy}
                   headLabel={TABLE_HEAD}
-                  rowCount={tableData.length}
+                  rowCount={dataFiltered.length}
                   numSelected={table.selected.length}
                   onSort={table.onSort}
-                  onSelectAllRows={(checked) =>
-                    table.onSelectAllRows(
-                      checked,
-                      tableData.map((row) => row._id)
-                    )
-                  }
                 />
 
                 <TableBody>
-                  {dataFiltered
-                    .slice(
-                      table.page * table.rowsPerPage,
-                      table.page * table.rowsPerPage + table.rowsPerPage
-                    )
-                    .map((row) => (
-                      <ProductTableRow
-                        key={row._id}
-                        row={row}
-                        selected={table.selected.includes(row._id)}
-                        onSelectRow={() => table.onSelectRow(row._id)}
-                        onDeleteRow={() => handleDeleteRow(row._id)}
-                        onEditRow={() => handleEditRow(row._id)}
-                        onToggleStatus={() => handleToggleStatus(row._id, row.is_active)}
-                      />
-                    ))}
+                  {/* ✅ Utilisation des données filtrées */}
+                  {dataInPage.map((row) => (
+                    <ProductTableRow
+                      key={row._id}
+                      row={row}
+                      selected={table.selected.includes(row._id)}
+                      onSelectRow={() => table.onSelectRow(row._id)}
+                      onDeleteRow={() => handleDeleteRow(row._id)}
+                      onEditRow={() => handleEditRow(row._id)}
+                      onToggleStatus={(currentStatus) => handleToggleStatus(row._id, currentStatus)}
+                      onRefresh={fetchProducts}
+                    />
+                  ))}
 
                   <TableEmptyRows
                     height={denseHeight}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, tableData.length)}
+                    emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
                   />
 
                   <TableNoData notFound={notFound} />
@@ -357,6 +339,18 @@ export default function ProductListView() {
           />
         </Card>
       </Container>
+
+      <ConfirmDialog
+        open={confirm.value}
+        onClose={confirm.onFalse}
+        title="Supprimer"
+        content="Êtes-vous sûr de vouloir supprimer cet élément ?"
+        action={
+          <Button variant="contained" color="error" onClick={confirm.onFalse}>
+            Supprimer
+          </Button>
+        }
+      />
     </>
   );
 }

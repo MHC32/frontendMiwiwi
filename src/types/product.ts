@@ -90,3 +90,4 @@ export interface ProductFormValues {
   };
   images?: File[];
 }
+

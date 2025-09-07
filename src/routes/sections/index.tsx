@@ -32,6 +32,9 @@ const OverviewAnalyticsPage = lazy(() => import('src/pages/dashboard/analytics')
 const OverviewFilePage = lazy(() => import('src/pages/dashboard/file'));
 // PRODUCT
 const ProductListPage = lazy(() => import('src/pages/dashboard/product/list'));
+const ProductCreatePage = lazy(() => import('src/pages/dashboard/product/new'));
+const ProductDetailsPage = lazy(() => import('src/pages/dashboard/product/details'));
+const ProductEditPage = lazy(() => import('src/pages/dashboard/product/edit'));
 
 // ORDER
 const OrderListPage = lazy(() => import('src/pages/dashboard/order/list'));
@@ -130,6 +133,9 @@ export default function Router() {
           children: [
             { element: <ProductListPage />, index: true },
             { path: 'list', element: <ProductListPage /> },
+            { path: 'new', element: <ProductCreatePage /> },
+            { path: ':id', element: <ProductDetailsPage /> },
+            { path: ':id/edit', element: <ProductEditPage /> },
           ],
         },
         {

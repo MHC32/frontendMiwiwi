@@ -611,6 +611,12 @@ export const productRequests = {
     return response.data;
   },
 
+  getProductById: async (id: string): Promise<IProductItem> => {
+    const response = await axios.get(`/api/owner/products/${id}`);
+    return response.data.data;
+  },
+
+
   // Désactiver un produit
   deactivateProduct: async (id: string): Promise<IProductItem> => {
     const response = await axios.delete(`/api/owner/products/${id}`);
