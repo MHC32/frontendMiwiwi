@@ -229,8 +229,8 @@ export default function ProductNewEditForm({ currentProduct, productId }: Props)
         if (data.barcode) formData.append('barcode', data.barcode);
         formData.append('type', data.type);
         formData.append('unit', data.unit);
-        formData.append('store_id', data.store_id);
-        if (data.category_id) formData.append('category_id', data.category_id);
+        formData.append('storeId', data.store_id);  // ✅ Correction: storeId au lieu de store_id
+        if (data.category_id) formData.append('categoryId', data.category_id);  // ✅ Correction: categoryId au lieu de category_id
         
         // Inventaire
         formData.append('inventory[current]', data.inventory.current.toString());
