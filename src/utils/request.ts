@@ -84,7 +84,7 @@ export const authRequests = {
   },
 
   logout: async (): Promise<void> => {
-    await axios.get('/api/user/logout');
+    await axios.post('/api/user/logout');
   },
 
 
