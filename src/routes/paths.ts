@@ -126,5 +126,13 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/meter-reading/list`,
       store: (storeId: string) => `${ROOTS.DASHBOARD}/meter-reading/store/${storeId}`,
     },
+
+    report: {
+      root: '/dashboard/reports',
+      overview: '/dashboard/reports/overview',
+      store: (storeId: string) => `/dashboard/reports/store/${storeId}`,
+      analytics: '/dashboard/reports/analytics',
+    },
+    
   },
 };

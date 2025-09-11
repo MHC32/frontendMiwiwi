@@ -5,6 +5,9 @@ import type { EmployeeRole, Cashier, Supervisor, EmployeeFormValues, EmployeeLis
 import type { ICategory, ICategoryFormValues, CategoryListResponse, CategoryResponse } from 'src/types/category';
 import type { IProductItem, ProductListResponse } from 'src/types/product';
 import type { IMeterReadingItem, IMeterReadingFilters, IVerifyReadingPayload } from 'src/types/meter-reading';
+import type { OwnerOverviewResponse, StoreReportResponse, ReportQueryParams } from 'src/types/report';
+
+
 type LoginCredentials = {
   phone: string;
   password: string;
@@ -706,4 +709,55 @@ export const METER_READING_ENDPOINTS = {
   storeReadings: (storeId: string) => `/api/owner/stores/${storeId}/readings`,
   verifyReading: (id: string) => `/api/owner/readings/${id}/verify`,
   readingStats: (storeId: string) => `/api/owner/stores/${storeId}/readings/stats`,
+};
+
+
+export const reportRequests = {
+  /**
+   * Obtenir le rapport général du propriétaire (tous ses magasins)
+   */
+  getOwnerOverview: async (params: ReportQueryParams): Promise<OwnerOverviewResponse> => {
+    const response = await axios.get('/api/owner/reports/overview', { params });
+    return response.data;
+  },
+
+  /**
+   * Obtenir le rapport détaillé d'un magasin spécifique
+   */
+  getStoreReport: async (storeId: string, params: ReportQueryParams ): Promise<StoreReportResponse> => {
+    const response = await axios.get(`/api/owner/reports/store/${storeId}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Exporter le rapport en PDF (optionnel - à implémenter côté backend)
+   */
+  exportReportPDF: async (
+    type: 'overview' | 'store',
+    params: ReportQueryParams & { storeId?: string }
+  ): Promise<Blob> => {
+    const endpoint = type === 'overview' 
+      ? '/api/owner/reports/overview/export'
+      : `/api/owner/reports/store/${params.storeId}/export`;
+    
+    const response = await axios.get(endpoint, {
+      params: { startDate: params.startDate, endDate: params.endDate },
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtenir les métriques de comparaison (optionnel - pour comparer avec période précédente)
+   */
+  getComparisonMetrics: async (
+    params: ReportQueryParams & { storeId?: string }
+  ): Promise<{
+    current: any;
+    previous: any;
+    growth: { revenue: number; orders: number };
+  }> => {
+    const response = await axios.get('/api/owner/reports/comparison', { params });
+    return response.data;
+  }
 };
