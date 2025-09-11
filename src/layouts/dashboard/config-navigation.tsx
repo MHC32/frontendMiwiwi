@@ -122,7 +122,7 @@ export function useNavData() {
             icon: ICONS.analytics,
             children: [
               { title: 'Vue d\'ensemble', path: paths.dashboard.report.overview },
-              { title: 'Analyses', path: paths.dashboard.report.analytics },
+              // { title: 'Analyses', path: paths.dashboard.report.store },
             ],
           },
         ],

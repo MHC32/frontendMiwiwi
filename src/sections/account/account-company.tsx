@@ -133,7 +133,7 @@ export default function AccountCompany() {
               >
                 <option value="EUR">Euro (€)</option>
                 <option value="USD">Dollar ($)</option>
-                <option value="XOF">Franc CFA (XOF)</option>
+                <option value="XOF">Franc HTG</option>
               </RHFSelect>
 
               <RHFTextField 

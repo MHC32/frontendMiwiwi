@@ -6,7 +6,7 @@ import { Navigate, useRoutes, Outlet } from 'react-router-dom';
 // import { PATH_AFTER_LOGIN } from 'src/config-global';
 
 
-import { AuthSync } from 'src/auth/auth-sync';
+// import { AuthSync } from 'src/auth/auth-sync';
 import { GuestGuard } from 'src/auth/guard';
 import AuthClassicLayout from 'src/layouts/auth/classic';
 import { JwtLoginView } from 'src/sections/auth/jwt';

@@ -717,7 +717,7 @@ export const reportRequests = {
    * Obtenir le rapport général du propriétaire (tous ses magasins)
    */
   getOwnerOverview: async (params: ReportQueryParams): Promise<OwnerOverviewResponse> => {
-    const response = await axios.get('/api/owner/reports/overview', { params });
+    const response = await axios.get('/api/owner/overview', { params });
     return response.data;
   },
 
@@ -725,7 +725,7 @@ export const reportRequests = {
    * Obtenir le rapport détaillé d'un magasin spécifique
    */
   getStoreReport: async (storeId: string, params: ReportQueryParams ): Promise<StoreReportResponse> => {
-    const response = await axios.get(`/api/owner/reports/store/${storeId}`, { params });
+    const response = await axios.get(`/api/owner/store/${storeId}`, { params });
     return response.data;
   },
 

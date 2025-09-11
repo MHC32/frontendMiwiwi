@@ -12,17 +12,18 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { ReportPeriod, REPORT_PERIODS } from 'src/types/report';
 // components
 import Iconify from 'src/components/iconify';
-import { CustomPopover, usePopover } from 'src/components/custom-popover';
+import CustomPopover, { usePopover } from '../../components/custom-popover';
 // redux
 import { 
   selectReportFilters, 
-  selectStores,
   setPeriod,
   setDateRange,
   setSelectedStore,
   updateFiltersAndRefresh
 } from 'src/redux/slices/report.slice';
-import { fetchStores } from 'src/redux/slices/store.slice';
+
+
+import { selectStores } from 'src/redux/slices/store.slice';
 
 // ----------------------------------------------------------------------
 

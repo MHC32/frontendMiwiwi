@@ -245,7 +245,7 @@ export default function ReportOverviewView() {
                       <Typography variant="h4" sx={{ color: 'success.main' }}>
                         {new Intl.NumberFormat('fr-FR', {
                           style: 'currency',
-                          currency: 'XOF',
+                          currency: 'HTG',
                           minimumFractionDigits: 0,
                         }).format(metrics.topStore.revenue)}
                       </Typography>
