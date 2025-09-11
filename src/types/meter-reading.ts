@@ -50,3 +50,31 @@ export interface IMeterReadingTableFilterValue {
   startDate: Date | null;
   endDate: Date | null;
 }
+
+// *** TYPES MANQUANTS AJOUTÉS ***
+
+// Interface pour la réponse de la liste des relevés
+export interface MeterReadingListResponse {
+  success: boolean;
+  data: IMeterReadingItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// Interface pour la réponse de vérification
+export interface VerifyReadingResponse {
+  success: boolean;
+  data: {
+    id: string;
+    status: string;
+    verified_by: {
+      id: string;
+      name: string;
+    };
+    verified_at: string;
+  };
+}

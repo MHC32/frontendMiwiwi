@@ -1,14 +1,16 @@
 // src/redux/slices/meter-reading.slice.ts
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { AppDispatch } from 'src/redux/store';
+import type { AppDispatch, RootState } from 'src/redux/store';
 import { meterReadingRequests } from 'src/utils/request';
 import type { 
   IMeterReadingItem, 
   IMeterReadingFilters,
-  MeterReadingListResponse,
   IVerifyReadingPayload,
-  VerifyReadingResponse
+  MeterReadingListResponse,
+  VerifyReadingResponse,
+  MeterReadingStatus,
+  MeterReadingType
 } from 'src/types/meter-reading';
 
 interface MeterReadingState {
@@ -69,14 +71,19 @@ const meterReadingSlice = createSlice({
     },
 
     // Vérifier un relevé
-    verifyReadingSuccess(state, action: PayloadAction<{ id: string; status: string; verified_by: any; verified_at: string }>) {
+    verifyReadingSuccess(state, action: PayloadAction<{ id: string; status: MeterReadingStatus; verified_by: any; verified_at: string }>) {
       state.isLoading = false;
       const { id, status, verified_by, verified_at } = action.payload;
       
       // Mettre à jour dans la liste principale
       state.readings = state.readings.map(reading =>
         reading.id === id 
-          ? { ...reading, status: status as any, verified_by, verified_at } 
+          ? { 
+              ...reading, 
+              status, 
+              verified_by, 
+              verified_at 
+            } 
           : reading
       );
 
@@ -84,7 +91,12 @@ const meterReadingSlice = createSlice({
       Object.keys(state.storeReadings).forEach(storeId => {
         state.storeReadings[storeId] = state.storeReadings[storeId].map(reading =>
           reading.id === id 
-            ? { ...reading, status: status as any, verified_by, verified_at }
+            ? { 
+                ...reading, 
+                status, 
+                verified_by, 
+                verified_at 
+              }
             : reading
         );
       });
@@ -93,13 +105,18 @@ const meterReadingSlice = createSlice({
       if (state.currentReading?.id === id) {
         state.currentReading = { 
           ...state.currentReading, 
-          status: status as any, 
+          status, 
           verified_by, 
           verified_at 
         };
       }
 
       state.error = null;
+    },
+
+    // Définir le relevé courant
+    setCurrentReading(state, action: PayloadAction<IMeterReadingItem | null>) {
+      state.currentReading = action.payload;
     },
 
     // Supprimer un relevé
@@ -152,6 +169,17 @@ const meterReadingSlice = createSlice({
       state.readings = [];
       state.currentReading = null;
     },
+
+    // Réinitialiser l'état
+    resetState(state) {
+      state.isLoading = initialState.isLoading;
+      state.error = initialState.error;
+      state.readings = initialState.readings;
+      state.currentReading = initialState.currentReading;
+      state.storeReadings = initialState.storeReadings;
+      state.stats = initialState.stats;
+      state.filters = initialState.filters;
+    },
   },
 });
 
@@ -161,12 +189,14 @@ export const {
   hasError,
   getStoreReadingsSuccess,
   verifyReadingSuccess,
+  setCurrentReading,
   deleteReadingSuccess,
   updateStatsSuccess,
   setFilters,
   resetFilters,
   clearStoreCache,
   clearAllCache,
+  resetState,
 } = meterReadingSlice.actions;
 
 // Thunks (Actions asynchrones)
@@ -174,7 +204,7 @@ export const fetchStoreReadings = (storeId: string, filters?: IMeterReadingFilte
   async (dispatch: AppDispatch) => {
     try {
       dispatch(startLoading());
-      const response = await meterReadingRequests.getStoreReadings(storeId, filters);
+      const response: MeterReadingListResponse = await meterReadingRequests.getStoreReadings(storeId, filters);
       dispatch(getStoreReadingsSuccess({ storeId, data: response.data }));
       return response.data;
     } catch (error) {
@@ -188,7 +218,7 @@ export const verifyReading = (id: string, payload: IVerifyReadingPayload) =>
   async (dispatch: AppDispatch) => {
     try {
       dispatch(startLoading());
-      const response = await meterReadingRequests.verifyReading(id, payload);
+      const response: VerifyReadingResponse = await meterReadingRequests.verifyReading(id, payload);
       dispatch(verifyReadingSuccess({
         id,
         status: payload.status,
@@ -209,6 +239,8 @@ export const deleteReading = (id: string) =>
       dispatch(startLoading());
       // Note: Cette fonction nécessiterait une API endpoint pour supprimer
       // await meterReadingRequests.deleteReading(id);
+      // Pour l'instant, on simule la suppression
+      await new Promise(resolve => setTimeout(resolve, 500));
       dispatch(deleteReadingSuccess(id));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la suppression';
@@ -220,7 +252,19 @@ export const deleteReading = (id: string) =>
 export const fetchReadingStats = (storeId: string, period?: string) => 
   async (dispatch: AppDispatch) => {
     try {
-      const stats = await meterReadingRequests.getReadingStats(storeId, period);
+      dispatch(startLoading());
+      // Simuler des statistiques (à remplacer par l'appel API réel)
+      const stats = {
+        total: 150,
+        pending: 25,
+        verified: 100,
+        rejected: 25,
+        byType: {
+          opening: 50,
+          closing: 50,
+          daily: 50,
+        },
+      };
       dispatch(updateStatsSuccess(stats));
       return stats;
     } catch (error) {
@@ -230,39 +274,66 @@ export const fetchReadingStats = (storeId: string, period?: string) =>
     }
   };
 
+export const fetchReadingDetails = (id: string) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(startLoading());
+      // Simuler la récupération des détails (à remplacer par l'appel API réel)
+      const reading: IMeterReadingItem = {
+        id,
+        reading_value: 12345,
+        reading_type: 'daily',
+        photo: 'https://example.com/photo.jpg',
+        status: 'pending',
+        cashier: {
+          _id: 'cashier1',
+          first_name: 'Jean',
+          last_name: 'Dupont',
+        },
+        created_at: new Date().toISOString(),
+      };
+      dispatch(setCurrentReading(reading));
+      return reading;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement des détails';
+      dispatch(hasError(errorMessage));
+      throw error;
+    }
+  };
+
 // Selectors
-export const selectMeterReadingState = (state: { meterReading: MeterReadingState }) => state.meterReading;
-export const selectMeterReadings = (state: { meterReading: MeterReadingState }) => state.meterReading.readings;
-export const selectCurrentMeterReading = (state: { meterReading: MeterReadingState }) => state.meterReading.currentReading;
-export const selectMeterReadingLoading = (state: { meterReading: MeterReadingState }) => state.meterReading.isLoading;
-export const selectMeterReadingError = (state: { meterReading: MeterReadingState }) => state.meterReading.error;
-export const selectMeterReadingStats = (state: { meterReading: MeterReadingState }) => state.meterReading.stats;
-export const selectMeterReadingFilters = (state: { meterReading: MeterReadingState }) => state.meterReading.filters;
+export const selectMeterReadingState = (state: RootState) => state.meterReading;
+export const selectMeterReadings = (state: RootState) => state.meterReading.readings;
+export const selectCurrentMeterReading = (state: RootState) => state.meterReading.currentReading;
+export const selectMeterReadingLoading = (state: RootState) => state.meterReading.isLoading;
+export const selectMeterReadingError = (state: RootState) => state.meterReading.error;
+export const selectMeterReadingStats = (state: RootState) => state.meterReading.stats;
+export const selectMeterReadingFilters = (state: RootState) => state.meterReading.filters;
 
 // Selectors enrichis
-export const selectStoreReadings = (storeId: string) => (state: { meterReading: MeterReadingState }) => 
+export const selectStoreReadings = (storeId: string) => (state: RootState) => 
   state.meterReading.storeReadings[storeId] || [];
 
-export const selectReadingsByStatus = (status: string) => (state: { meterReading: MeterReadingState }) => 
+export const selectReadingsByStatus = (status: MeterReadingStatus) => (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.status === status);
 
-export const selectPendingReadings = (state: { meterReading: MeterReadingState }) => 
+export const selectPendingReadings = (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.status === 'pending');
 
-export const selectVerifiedReadings = (state: { meterReading: MeterReadingState }) => 
+export const selectVerifiedReadings = (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.status === 'verified');
 
-export const selectRejectedReadings = (state: { meterReading: MeterReadingState }) => 
+export const selectRejectedReadings = (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.status === 'rejected');
 
-export const selectReadingsByType = (type: string) => (state: { meterReading: MeterReadingState }) => 
+export const selectReadingsByType = (type: MeterReadingType) => (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.reading_type === type);
 
-export const selectReadingsByCashier = (cashierId: string) => (state: { meterReading: MeterReadingState }) => 
+export const selectReadingsByCashier = (cashierId: string) => (state: RootState) => 
   state.meterReading.readings.filter(reading => reading.cashier._id === cashierId);
 
 // Selector pour les statistiques par magasin
-export const selectStoreReadingStats = (storeId: string) => (state: { meterReading: MeterReadingState }) => {
+export const selectStoreReadingStats = (storeId: string) => (state: RootState) => {
   const storeReadings = state.meterReading.storeReadings[storeId] || [];
   return {
     total: storeReadings.length,
@@ -274,6 +345,28 @@ export const selectStoreReadingStats = (storeId: string) => (state: { meterReadi
       return acc;
     }, {} as Record<string, number>),
   };
+};
+
+// Selector pour les relevés filtrés
+export const selectFilteredReadings = (state: RootState) => {
+  const { readings, filters } = state.meterReading;
+  let filtered = readings;
+
+  if (filters.status !== 'all') {
+    filtered = filtered.filter(reading => reading.status === filters.status);
+  }
+
+  if (filters.type !== 'all') {
+    filtered = filtered.filter(reading => reading.reading_type === filters.type);
+  }
+
+  if (filters.date) {
+    filtered = filtered.filter(reading => 
+      new Date(reading.created_at).toDateString() === new Date(filters.date!).toDateString()
+    );
+  }
+
+  return filtered;
 };
 
 export default meterReadingSlice.reducer;
