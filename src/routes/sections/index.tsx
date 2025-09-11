@@ -48,6 +48,10 @@ const UserAccountPage = lazy(() => import('src/pages/dashboard/user/account'));
 const UserCreatePage = lazy(() => import('src/pages/dashboard/user/new'));
 const UserEditPage = lazy(() => import('src/pages/dashboard/user/edit'));
 
+//DOCUMENT
+const MeterReadingListPage = lazy(() => import('src/pages/dashboard/meter-reading/list'));
+const MeterReadingStorePage = lazy(() => import('src/pages/dashboard/meter-reading/store'));
+
 
 // FILE MANAGER
 const FileManagerPage = lazy(() => import('src/pages/dashboard/file-manager'));
@@ -114,6 +118,15 @@ export default function Router() {
             { path: 'list', element: <ListEmployee /> },
             { path: 'edit/:id', element: <EditEmployee /> },
             { path: 'new', element: <NewEmployee /> }
+          ],
+        },
+
+        {
+          path: 'meter-reading',
+          children: [
+            { element: <MeterReadingListPage />, index: true },
+            { path: 'list', element: <MeterReadingListPage /> },
+            { path: 'store/:storeId', element: <MeterReadingStorePage /> },
           ],
         },
 

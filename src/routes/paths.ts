@@ -121,6 +121,10 @@ export const paths = {
       edit: (id: string) => `${ROOTS.DASHBOARD}/employee/edit/${id}`
     },
 
-
+    meterReading: {
+      root: `${ROOTS.DASHBOARD}/meter-reading`,
+      list: `${ROOTS.DASHBOARD}/meter-reading/list`,
+      store: (storeId: string) => `${ROOTS.DASHBOARD}/meter-reading/store/${storeId}`,
+    },
   },
 };

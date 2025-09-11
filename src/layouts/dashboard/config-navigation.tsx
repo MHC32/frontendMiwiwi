@@ -41,6 +41,7 @@ const ICONS = {
   ecommerce: icon('ic_ecommerce'),
   analytics: icon('ic_analytics'),
   dashboard: icon('ic_dashboard'),
+  document: icon('ic_file'), // Utilisons l'icône 'file' pour 'document'
 };
 
 // ----------------------------------------------------------------------
@@ -101,6 +102,16 @@ export function useNavData() {
             children: [
               { title: 'Ajouter Produit', path: paths.dashboard.product.new },
               { title: 'Liste Produit', path: paths.dashboard.product.list },
+            ],
+          },
+
+          // 🆕 MODULE DOCUMENT (METER READING)
+          {
+            title: 'Document',
+            path: paths.dashboard.meterReading.root,
+            icon: ICONS.document,
+            children: [
+              { title: 'Relevés Compteur', path: paths.dashboard.meterReading.list },
             ],
           },
         ],

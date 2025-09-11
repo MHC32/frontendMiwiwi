@@ -4,6 +4,7 @@ import type { IStoreItem, StoreFormValues, StoreListResponse } from 'src/types/s
 import type { EmployeeRole, Cashier, Supervisor, EmployeeFormValues, EmployeeListResponse } from 'src/types/employee';
 import type { ICategory, ICategoryFormValues, CategoryListResponse, CategoryResponse } from 'src/types/category';
 import type { IProductItem, ProductListResponse } from 'src/types/product';
+import type { IMeterReadingItem, IMeterReadingFilters, IVerifyReadingPayload } from 'src/types/meter-reading';
 type LoginCredentials = {
   phone: string;
   password: string;
@@ -60,6 +61,36 @@ export type OwnerProfileResponse = {
   stores: Store[];
   supervisedStore: Store | null;
 };
+
+
+
+
+// Interface pour la réponse de la liste des relevés
+export interface MeterReadingListResponse {
+  success: boolean;
+  data: IMeterReadingItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// Interface pour la réponse de vérification
+export interface VerifyReadingResponse {
+  success: boolean;
+  data: {
+    id: string;
+    status: string;
+    verified_by: {
+      id: string;
+      name: string;
+    };
+    verified_at: string;
+  };
+}
+
 
 
 
@@ -628,4 +659,51 @@ export const productRequests = {
     const response = await axios.patch(`/api/owner/products/${id}/reactivate`);
     return response.data;
   },
+};
+
+
+export const meterReadingRequests = {
+  // Obtenir les relevés d'un magasin avec filtres
+  getStoreReadings: async (
+    storeId: string, 
+    filters?: IMeterReadingFilters
+  ): Promise<MeterReadingListResponse> => {
+    const params: any = {};
+    
+    if (filters?.date) params.date = filters.date;
+    if (filters?.type && filters.type !== 'all') params.type = filters.type;
+    if (filters?.status && filters.status !== 'all') params.status = filters.status;
+
+    const response = await axios.get(`/api/owner/stores/${storeId}/readings`, { params });
+    return response.data;
+  },
+
+  // Vérifier/Valider un relevé (pour superviseurs/owners)
+  verifyReading: async (
+    id: string, 
+    payload: IVerifyReadingPayload
+  ): Promise<VerifyReadingResponse> => {
+    const response = await axios.patch(`/api/owner/readings/${id}/verify`, payload);
+    return response.data;
+  },
+
+  // Obtenir les statistiques des relevés pour un magasin
+  getReadingStats: async (storeId: string, period?: string): Promise<{
+    total: number;
+    pending: number;
+    verified: number;
+    rejected: number;
+    byType: Record<string, number>;
+  }> => {
+    const params = period ? { period } : {};
+    const response = await axios.get(`/api/owner/stores/${storeId}/readings/stats`, { params });
+    return response.data;
+  }
+};
+
+// Ajoutez aussi ces endpoints dans API_ENDPOINTS :
+export const METER_READING_ENDPOINTS = {
+  storeReadings: (storeId: string) => `/api/owner/stores/${storeId}/readings`,
+  verifyReading: (id: string) => `/api/owner/readings/${id}/verify`,
+  readingStats: (storeId: string) => `/api/owner/stores/${storeId}/readings/stats`,
 };
