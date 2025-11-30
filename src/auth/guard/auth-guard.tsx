@@ -1,32 +1,22 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { useCookies } from 'react-cookie';
-import { selectIsAuthenticated, logoutSuccess } from 'src/redux/slices/auth.slice';
-import type { AppDispatch } from 'src/redux/store';
+import { useSelector } from 'react-redux';
+import { selectIsAuthenticated } from 'src/redux/slices/auth.slice';
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const dispatch = useDispatch<AppDispatch>();
-  const [cookies] = useCookies(['jwt']);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const location = useLocation();
 
-  // Vérifier que le cookie existe si l'utilisateur est "authentifié"
-  useEffect(() => {
-    if (isAuthenticated && !cookies.jwt) {
-      console.warn('⚠️ [AuthGuard] Utilisateur authentifié mais cookie manquant');
-      dispatch(logoutSuccess());
-    }
-  }, [isAuthenticated, cookies.jwt, dispatch]);
-
-  // Si pas authentifié ou pas de cookie, rediriger vers login
-  if (!isAuthenticated || !cookies.jwt) {
+  // ✅ Vérification simple basée uniquement sur Redux
+  if (!isAuthenticated) {
+    console.log('🚫 [AuthGuard] Accès refusé - Redirection vers login');
     return <Navigate to="/auth/jwt/login" state={{ from: location.pathname }} replace />;
   }
 
+  console.log('✅ [AuthGuard] Accès autorisé');
   return <>{children}</>;
 }

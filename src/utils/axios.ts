@@ -1,33 +1,33 @@
 import axios from 'axios';
 import { HOST_API } from 'src/config-global';
 import { store } from 'src/redux/store';
+import { logoutSuccess } from 'src/redux/slices/auth.slice';
 
 const axiosInstance = axios.create({
   baseURL: HOST_API,
   withCredentials: true
 });
 
-// Intercepteur pour la gestion des erreurs avec logout automatique sur 401
+// Intercepteur pour la gestion des erreurs
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Gestion spécifique du 401 (Unauthorized)
-    if (error.response?.status === 401) {
-      // 1. Dispatch action de logout pour nettoyer Redux
-      store.dispatch({ type: 'auth/logout' });
+    // ✅ Ne PAS déclencher le logout sur les routes d'authentification
+    const isAuthRoute = error.config?.url?.includes('/login') || 
+                        error.config?.url?.includes('/owner-data');
+
+    // Gestion du 401 (Unauthorized)
+    if (error.response?.status === 401 && !isAuthRoute) {
+      console.warn('⚠️ [Axios] Session expirée - Déconnexion automatique');
       
-      // 2. Nettoyer le localStorage/sessionStorage
+      store.dispatch(logoutSuccess());
       localStorage.clear();
       sessionStorage.clear();
+      window.location.href = '/auth/jwt/login';
       
-      // 3. Redirection vers la page de login
-      window.location.href = '/login';
-      
-      // 4. Retourner une erreur spécifique
       return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
     }
 
-    // Gestion améliorée des autres erreurs
     const errorMessage = error.response?.data?.error ||
                         error.response?.data?.message ||
                         error.message ||
@@ -37,29 +37,15 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// Intercepteur pour ajouter automatiquement le token d'auth si disponible
-axiosInstance.interceptors.request.use(
-  (config) => {
-    // Récupérer le token depuis Redux store
-    const state = store.getState();
-    const token = state.auth?.accessToken;
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
 export default axiosInstance;
 
 export const API_ENDPOINTS = {
   auth: {
     login: '/api/user/login',
+    loginOwner: '/api/user/login-owner',
     logout: '/api/user/logout',
-    me: '/jwtid' // Pour checkAuth
+    ownerData: '/api/user/owner-data',
+    me: '/jwtid'
   },
   products: {
     list: '/api/owner/products',

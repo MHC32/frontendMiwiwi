@@ -183,13 +183,12 @@ export const initializeAuth = () => async (dispatch: AppDispatch) => {
         phone: profileResponse.user.phone,
         companies: profileResponse.companies,
         stores: profileResponse.stores,
-        supervisedStore: profileResponse.supervisedStore ?? null // ✅ Convertir undefined en null
+        supervisedStore: profileResponse.supervisedStore ?? null
       }
     }));
   } catch (error) {
     console.error('❌ [initializeAuth] Erreur récupération profil', error);
     dispatch(logoutSuccess());
-    throw error; // Propager l'erreur pour que AuthSync puisse la gérer
   } finally {
     console.log('🏁 [initializeAuth] Fin initializeAuth');
     dispatch(setInitialized());
