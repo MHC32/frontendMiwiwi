@@ -1,69 +1,119 @@
-import type { PayloadAction } from '@reduxjs/toolkit';
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AppDispatch } from 'src/redux/store';
 import { authRequests } from 'src/utils/request';
 
+// Types
+export interface User {
+  id: string;
+  role: string;
+  phone: string;
+}
 
-// Types supplémentaires
-type Company = { id: string; name: string; ref_code: string; settings: { currency: string; tax_rate: number }; is_active: boolean; };
-type Store = { id: string; name: string; contact: { address: { city: string; country: string }; phone: string; }; is_active: boolean; employees?: Array<{ id: string; first_name: string; last_name: string; role: string; }>; };
-type Profile = { firstName: string; lastName: string; email?: string; phone: string; companies: Company[]; stores: Store[]; supervisedStore: Store | null; };
-type User = { id: string; role: string; phone?: string; };
+// ✅ Types flexibles qui correspondent à ce que l'API retourne vraiment
+export interface Company {
+  id: string;
+  name: string;
+  description?: string;
+  ref_code: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  created_at?: string; // ✅ Optionnel maintenant
+  is_active?: boolean; // ✅ Ajouté pour account-company.tsx
+  settings?: {         // ✅ Ajouté pour account-company.tsx
+    currency?: string;
+    tax_rate?: number;
+  };
+}
 
-type AuthState = {
-  isInitialized: boolean;
+export interface Store {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  company_id?: string; // ✅ Optionnel maintenant
+  created_at?: string; // ✅ Optionnel maintenant
+}
+
+export interface Profile {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone: string;
+  companies?: Company[];
+  stores?: Store[];
+  supervisedStore?: Store | null; // ✅ Accepte null maintenant
+}
+
+export interface AuthState {
+  isLoading: boolean;
   isAuthenticated: boolean;
+  isInitialized: boolean;
   user: User | null;
   profile: Profile | null;
-  isLoading: boolean;
   error: string | null;
-};
+  accessToken: string | null;
+}
 
 const initialState: AuthState = {
-  isInitialized: false,
-  isAuthenticated: false,
   isLoading: false,
-  error: null,
+  isAuthenticated: false,
+  isInitialized: false,
   user: null,
   profile: null,
+  error: null,
+  accessToken: null,
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    startLoading: (state) => { state.isLoading = true; state.error = null; },
+    startLoading: (state) => {
+      state.isLoading = true;
+      state.error = null;
+    },
+
     loginSuccess: (state, action: PayloadAction<{ user: User; profile: Profile }>) => {
-      console.log('🟢 [authSlice] loginSuccess called');
-      state.isAuthenticated = true;
       state.isLoading = false;
+      state.isAuthenticated = true;
       state.user = action.payload.user;
       state.profile = action.payload.profile;
       state.error = null;
     },
+
     authFailure: (state, action: PayloadAction<string>) => {
       state.isLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.profile = null;
       state.error = action.payload;
     },
+
     logoutSuccess: (state) => {
-      state.isAuthenticated = false;
-      state.user = null;
-      state.profile = null;
-      state.error = null;
-    },
-    clearError: (state) => { state.error = null; },
-    clearUser: (state) => {
-      state.isAuthenticated = false;
-      state.user = null;
-      state.profile = null;
-      state.error = null;
       state.isLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.profile = null;
+      state.error = null;
+      state.accessToken = null;
     },
+
+    clearError: (state) => {
+      state.error = null;
+    },
+
+    clearUser: (state) => {
+      state.user = null;
+      state.profile = null;
+    },
+
     updateProfile: (state, action: PayloadAction<Partial<Profile>>) => {
       if (state.profile) {
         state.profile = { ...state.profile, ...action.payload };
       }
     },
+
     setInitialized: (state) => {
       state.isInitialized = true;
     }
@@ -88,6 +138,7 @@ export const loginOwner = (credentials: { phone: string; password: string }) =>
       dispatch(startLoading());
       const loginResponse = await authRequests.loginOwner(credentials);
       const profileResponse = await authRequests.getOwnerData();
+      
       dispatch(loginSuccess({
         user: {
           id: loginResponse.userId,
@@ -101,9 +152,10 @@ export const loginOwner = (credentials: { phone: string; password: string }) =>
           phone: profileResponse.user.phone,
           companies: profileResponse.companies,
           stores: profileResponse.stores,
-          supervisedStore: profileResponse.supervisedStore
+          supervisedStore: profileResponse.supervisedStore ?? null // ✅ Convertir undefined en null
         }
       }));
+      
       dispatch(setInitialized());
       return { success: true };
     } catch (error: any) {
@@ -131,24 +183,54 @@ export const initializeAuth = () => async (dispatch: AppDispatch) => {
         phone: profileResponse.user.phone,
         companies: profileResponse.companies,
         stores: profileResponse.stores,
-        supervisedStore: profileResponse.supervisedStore
+        supervisedStore: profileResponse.supervisedStore ?? null // ✅ Convertir undefined en null
       }
     }));
   } catch (error) {
     console.error('❌ [initializeAuth] Erreur récupération profil', error);
     dispatch(logoutSuccess());
+    throw error; // Propager l'erreur pour que AuthSync puisse la gérer
   } finally {
-    console.log('🏁 [initializeAuth] Fin initializeAuth, dispatch setInitialized');
+    console.log('🏁 [initializeAuth] Fin initializeAuth');
     dispatch(setInitialized());
   }
 };
 
-
 export const logout = () => async (dispatch: AppDispatch) => {
-  document.cookie = 'jwt=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-  await authRequests.logout();
-  dispatch(logoutSuccess());
-  window.location.pathname = '/auth/jwt/login';
+  try {
+    console.log('🚪 [logout] Déconnexion en cours...');
+    
+    // 1. Appeler l'API de logout (même si ça échoue, on continue)
+    try {
+      await authRequests.logout();
+      console.log('✅ [logout] Logout API réussi');
+    } catch (apiError: any) {
+      console.warn('⚠️ [logout] Erreur API (on continue quand même):', apiError.message);
+      // On ignore l'erreur "aucune session active" côté serveur
+    }
+
+    // 2. Nettoyer le cookie JWT localement
+    document.cookie = 'jwt=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    console.log('✅ [logout] Cookie supprimé');
+
+    // 3. Nettoyer Redux
+    dispatch(logoutSuccess());
+    console.log('✅ [logout] Redux nettoyé');
+
+    // 4. Nettoyer le localStorage/sessionStorage
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('✅ [logout] Storage nettoyé');
+
+    // 5. Redirection vers login (CORRECTION DU BUG)
+    window.location.href = '/auth/jwt/login'; // ✅ Utiliser href au lieu de pathname
+    
+  } catch (error: any) {
+    console.error('❌ [logout] Erreur lors du logout:', error);
+    // Même en cas d'erreur, on force la redirection
+    dispatch(logoutSuccess());
+    window.location.href = '/auth/jwt/login';
+  }
 };
 
 export default authSlice.reducer;

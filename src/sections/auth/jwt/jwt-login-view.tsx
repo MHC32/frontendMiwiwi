@@ -1,4 +1,4 @@
- import * as Yup from 'yup';
+import * as Yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { useCallback, useState } from 'react';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -62,38 +62,43 @@ export default function JwtLoginView() {
   } = methods;
 
   const onSubmit = useCallback(
-  async (data: FormValuesProps) => {
-    try {
-      setErrorMsg('');
-      await dispatch(loginOwner(data));
-      
-      enqueueSnackbar('Connexion réussie!', { 
-        variant: 'success',
-        autoHideDuration: 2000
-      });
-      
-      navigate(paths.dashboard.root, { replace: true }); 
-      
-    } catch (error: any) {
-      console.error('Erreur de connexion:', error);
-      
-      let errorMessage = 'Identifiants incorrects';
-      if (error.response?.data?.code === "ROLE_NOT_ALLOWED") {
-        errorMessage = "Accès réservé aux propriétaires et superviseurs";
-      } else if (error.message) {
-        errorMessage = error.message;
+    async (data: FormValuesProps) => {
+      try {
+        setErrorMsg('');
+        
+        console.log('🔐 [Login] Tentative de connexion...');
+        await dispatch(loginOwner(data));
+        console.log('✅ [Login] Connexion réussie');
+        
+        enqueueSnackbar('Connexion réussie!', { 
+          variant: 'success',
+          autoHideDuration: 2000
+        });
+        
+        // ✅ CORRECTION : Redirection vers /dashboard/app (pas /dashboard)
+        console.log('🔄 [Login] Redirection vers /dashboard/app');
+        navigate('/dashboard/app', { replace: true }); 
+        
+      } catch (error: any) {
+        console.error('❌ [Login] Erreur de connexion:', error);
+        
+        let errorMessage = 'Identifiants incorrects';
+        if (error.response?.data?.code === "ROLE_NOT_ALLOWED") {
+          errorMessage = "Accès réservé aux propriétaires et superviseurs";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        setErrorMsg(errorMessage);
+        enqueueSnackbar(errorMessage, { 
+          variant: 'error',
+          autoHideDuration: 3000
+        });
       }
-      
-      setErrorMsg(errorMessage);
-      enqueueSnackbar(errorMessage, { 
-        variant: 'error',
-        autoHideDuration: 3000
-      });
-    }
-  },
-  [dispatch, enqueueSnackbar, navigate]
+    },
+    [dispatch, enqueueSnackbar, navigate]
+  );
 
-);
   const renderHead = (
     <Stack spacing={2} sx={{ mb: 5 }}>
       <Typography variant="h4">Connexion</Typography>

@@ -1,12 +1,6 @@
 import { lazy } from 'react';
 import { Navigate, useRoutes, Outlet } from 'react-router-dom';
-// layouts
-// import MainLayout from 'src/layouts/main';
-// config
-// import { PATH_AFTER_LOGIN } from 'src/config-global';
 
-
-// import { AuthSync } from 'src/auth/auth-sync';
 import { GuestGuard } from 'src/auth/guard';
 import AuthClassicLayout from 'src/layouts/auth/classic';
 import { JwtLoginView } from 'src/sections/auth/jwt';
@@ -56,11 +50,11 @@ const MeterReadingStorePage = lazy(() => import('src/pages/dashboard/meter-readi
 const ReportOverviewView = lazy(() => import('src/sections/report/view/report-overview-view'));
 const ReportStoreView = lazy(() => import('src/sections/report/view/report-store-view'));
 
-
 // FILE MANAGER
 const FileManagerPage = lazy(() => import('src/pages/dashboard/file-manager'));
 // APP
 const ChatPage = lazy(() => import('src/pages/dashboard/chat'));
+
 // ----------------------------------------------------------------------
 export default function Router() {
   return useRoutes([
@@ -96,6 +90,9 @@ export default function Router() {
         </AuthGuard>
       ),
       children: [
+        // ✅ AJOUT : Redirection par défaut quand on va sur /dashboard
+        { element: <Navigate to="/dashboard/app" replace />, index: true },
+        
         { path: 'app', element: <IndexPage /> },
         {
           path: 'store',
@@ -134,14 +131,14 @@ export default function Router() {
           ],
         },
 
-          {
-        path: 'reports',
-        children: [
-          { element: <ReportOverviewView />, index: true },
-          { path: 'overview', element: <ReportOverviewView /> },
-          { path: 'store/:storeId', element: <ReportStoreView /> },
-        ],
-      },
+        {
+          path: 'reports',
+          children: [
+            { element: <ReportOverviewView />, index: true },
+            { path: 'overview', element: <ReportOverviewView /> },
+            { path: 'store/:storeId', element: <ReportStoreView /> },
+          ],
+        },
 
         { path: 'file', element: <OverviewFilePage /> },
         { path: 'analytics', element: <OverviewAnalyticsPage /> },
@@ -186,4 +183,3 @@ export default function Router() {
     { path: '*', element: <Navigate to="/404" replace /> }
   ]);
 }
-
