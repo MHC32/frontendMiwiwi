@@ -6,6 +6,7 @@ import type { ICategory, ICategoryFormValues, CategoryListResponse, CategoryResp
 import type { IProductItem, ProductListResponse } from 'src/types/product';
 import type { IMeterReadingItem, IMeterReadingFilters, IVerifyReadingPayload } from 'src/types/meter-reading';
 import type { OwnerOverviewResponse, StoreReportResponse, ReportQueryParams } from 'src/types/report';
+import type {  IDailyStatsResponse, ISalesByProductResponse, ISalesByProductParams, ISalesByMonthResponse, ISalesByMonthParams, IStatsByStoreResponse, ITopProductsResponse, ITopProductsParams, ISalesTrendsResponse, ISalesTrendsParams,} from 'src/types/owner-dashboard';
 
 
 type LoginCredentials = {
@@ -760,4 +761,111 @@ export const reportRequests = {
     const response = await axios.get('/api/owner/reports/comparison', { params });
     return response.data;
   }
+};
+
+/**
+ * OWNER DASHBOARD REQUESTS
+ * Endpoints pour les statistiques et métriques du dashboard owner
+ */
+export const ownerDashboardRequests = {
+  /**
+   * GET /api/owner/dashboard/stats
+   * Obtenir les statistiques quotidiennes (caissiers, tickets, ventes)
+   */
+  getDailyStats: async (): Promise<IDailyStatsResponse> => {
+    const response = await axios.get('/api/owner/dashboard/stats');
+    return response.data;
+  },
+
+  /**
+   * GET /api/owner/dashboard/sales-by-product
+   * Obtenir la répartition des ventes par produit (Donut Chart)
+   * @param params - Période de temps (today, week, month, year)
+   */
+  getSalesByProduct: async (params?: ISalesByProductParams): Promise<ISalesByProductResponse> => {
+    const response = await axios.get('/api/owner/dashboard/sales-by-product', { params });
+    return response.data;
+  },
+
+  /**
+   * GET /api/owner/dashboard/sales-by-month
+   * Obtenir les ventes mensuelles pour une année (Line Chart)
+   * @param params - Année à analyser
+   */
+  getSalesByMonth: async (params?: ISalesByMonthParams): Promise<ISalesByMonthResponse> => {
+    const response = await axios.get('/api/owner/dashboard/sales-by-month', { params });
+    return response.data;
+  },
+
+  /**
+   * GET /api/owner/dashboard/stats-by-store
+   * Obtenir les statistiques détaillées par magasin
+   */
+  getStatsByStore: async (): Promise<IStatsByStoreResponse> => {
+    const response = await axios.get('/api/owner/dashboard/stats-by-store');
+    return response.data;
+  },
+
+  /**
+   * GET /api/owner/dashboard/top-products
+   * Obtenir les produits les plus vendus
+   * @param params - Limite du nombre de produits à retourner
+   */
+  getTopProducts: async (params?: ITopProductsParams): Promise<ITopProductsResponse> => {
+    const response = await axios.get('/api/owner/dashboard/top-products', { params });
+    return response.data;
+  },
+
+  /**
+   * GET /api/owner/dashboard/sales-trends
+   * Obtenir les tendances de ventes quotidiennes
+   * @param params - Nombre de jours à analyser
+   */
+  getSalesTrends: async (params?: ISalesTrendsParams): Promise<ISalesTrendsResponse> => {
+    const response = await axios.get('/api/owner/dashboard/sales-trends', { params });
+    return response.data;
+  },
+
+  /**
+   * Rafraîchir toutes les métriques du dashboard
+   * Utile pour un bouton de rafraîchissement global
+   */
+  refreshAllMetrics: async (params?: {
+    productPeriod?: ISalesByProductParams['period'];
+    year?: number;
+    topProductsLimit?: number;
+    trendsDays?: number;
+  }): Promise<{
+    dailyStats: IDailyStatsResponse;
+    salesByProduct: ISalesByProductResponse;
+    salesByMonth: ISalesByMonthResponse;
+    statsByStore: IStatsByStoreResponse;
+    topProducts: ITopProductsResponse;
+    salesTrends: ISalesTrendsResponse;
+  }> => {
+    const [
+      dailyStats,
+      salesByProduct,
+      salesByMonth,
+      statsByStore,
+      topProducts,
+      salesTrends,
+    ] = await Promise.all([
+      ownerDashboardRequests.getDailyStats(),
+      ownerDashboardRequests.getSalesByProduct({ period: params?.productPeriod }),
+      ownerDashboardRequests.getSalesByMonth({ year: params?.year }),
+      ownerDashboardRequests.getStatsByStore(),
+      ownerDashboardRequests.getTopProducts({ limit: params?.topProductsLimit }),
+      ownerDashboardRequests.getSalesTrends({ days: params?.trendsDays }),
+    ]);
+
+    return {
+      dailyStats,
+      salesByProduct,
+      salesByMonth,
+      statsByStore,
+      topProducts,
+      salesTrends,
+    };
+  },
 };

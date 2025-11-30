@@ -15,6 +15,7 @@ import categoryReducer from './slices/category';
 import meterReadingReducer from './slices/meter-reading.slice';
 // Nouveau slice
 import reportReducer from './slices/report.slice';
+import ownerDashboardReducer from './slices/ownerDashboardSlice';
 
 // ----------------------------------------------------------------------
 
@@ -55,5 +56,6 @@ export const rootReducer = combineReducers({
   employee: employeeReducer,
   category: categoryReducer,
   meterReading: persistReducer(meterReadingPersistConfig, meterReadingReducer),
-  report: reportReducer, // Ajout du nouveau slice
+  report: reportReducer,
+  ownerDashboard: ownerDashboardReducer, 
 });
