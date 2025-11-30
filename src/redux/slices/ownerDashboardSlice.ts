@@ -1,7 +1,8 @@
-// src/store/slices/ownerDashboardSlice.ts
+// src/redux/slices/ownerDashboardSlice.ts
 
 import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
-import type { RootState } from '../store';
+import type { AppDispatch, RootState } from '../store';
+import { ownerDashboardRequests } from 'src/utils/request';
 import type {
   IDailyStatsResponse,
   ISalesByProductResponse,
@@ -10,6 +11,10 @@ import type {
   ITopProductsResponse,
   ISalesTrendsResponse,
   IDashboardFilters,
+  ISalesByProductParams,
+  ISalesByMonthParams,
+  ITopProductsParams,
+  ISalesTrendsParams,
 } from 'src/types/owner-dashboard';
 
 /**
@@ -78,7 +83,7 @@ const ownerDashboardSlice = createSlice({
   name: 'ownerDashboard',
   initialState,
   reducers: {
-    // Daily Stats - Statistiques quotidiennes
+    // Daily Stats
     getDailyStatsStart(state) {
       state.isLoading.dailyStats = true;
       state.error = null;
@@ -94,7 +99,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Sales by Product - Répartition des ventes par produit
+    // Sales by Product
     getSalesByProductStart(state) {
       state.isLoading.salesByProduct = true;
       state.error = null;
@@ -110,7 +115,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Sales by Month - Ventes mensuelles
+    // Sales by Month
     getSalesByMonthStart(state) {
       state.isLoading.salesByMonth = true;
       state.error = null;
@@ -126,7 +131,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Stats by Store - Statistiques par magasin
+    // Stats by Store
     getStatsByStoreStart(state) {
       state.isLoading.statsByStore = true;
       state.error = null;
@@ -142,7 +147,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Top Products - Produits les plus vendus
+    // Top Products
     getTopProductsStart(state) {
       state.isLoading.topProducts = true;
       state.error = null;
@@ -158,7 +163,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Sales Trends - Tendances de ventes
+    // Sales Trends
     getSalesTrendsStart(state) {
       state.isLoading.salesTrends = true;
       state.error = null;
@@ -174,59 +179,7 @@ const ownerDashboardSlice = createSlice({
       state.error = action.payload;
     },
 
-    // Refresh All - Rafraîchir toutes les métriques
-    refreshAllMetricsStart(state) {
-      state.isLoading = {
-        dailyStats: true,
-        salesByProduct: true,
-        salesByMonth: true,
-        statsByStore: true,
-        topProducts: true,
-        salesTrends: true,
-      };
-      state.error = null;
-    },
-    refreshAllMetricsSuccess(
-      state,
-      action: PayloadAction<{
-        dailyStats: IDailyStatsResponse['data'];
-        salesByProduct: ISalesByProductResponse['data'];
-        salesByMonth: ISalesByMonthResponse['data'];
-        statsByStore: IStatsByStoreResponse['data'];
-        topProducts: ITopProductsResponse['data'];
-        salesTrends: ISalesTrendsResponse['data'];
-      }>
-    ) {
-      state.isLoading = {
-        dailyStats: false,
-        salesByProduct: false,
-        salesByMonth: false,
-        statsByStore: false,
-        topProducts: false,
-        salesTrends: false,
-      };
-      state.dailyStats = action.payload.dailyStats;
-      state.salesByProduct = action.payload.salesByProduct;
-      state.salesByMonth = action.payload.salesByMonth;
-      state.statsByStore = action.payload.statsByStore;
-      state.topProducts = action.payload.topProducts;
-      state.salesTrends = action.payload.salesTrends;
-      state.lastUpdated = new Date();
-      state.error = null;
-    },
-    refreshAllMetricsFailure(state, action: PayloadAction<string>) {
-      state.isLoading = {
-        dailyStats: false,
-        salesByProduct: false,
-        salesByMonth: false,
-        statsByStore: false,
-        topProducts: false,
-        salesTrends: false,
-      };
-      state.error = action.payload;
-    },
-
-    // Filters - Gestion des filtres
+    // Filters
     setDashboardFilters(state, action: PayloadAction<Partial<IDashboardFilters>>) {
       state.filters = {
         ...state.filters,
@@ -237,7 +190,7 @@ const ownerDashboardSlice = createSlice({
       state.filters = initialState.filters;
     },
 
-    // Reset - Réinitialisation
+    // Reset
     resetDashboardState(state) {
       Object.assign(state, initialState);
     },
@@ -252,38 +205,26 @@ const ownerDashboardSlice = createSlice({
 // ============================================================================
 
 export const {
-  // Daily Stats
   getDailyStatsStart,
   getDailyStatsSuccess,
   getDailyStatsFailure,
-  // Sales by Product
   getSalesByProductStart,
   getSalesByProductSuccess,
   getSalesByProductFailure,
-  // Sales by Month
   getSalesByMonthStart,
   getSalesByMonthSuccess,
   getSalesByMonthFailure,
-  // Stats by Store
   getStatsByStoreStart,
   getStatsByStoreSuccess,
   getStatsByStoreFailure,
-  // Top Products
   getTopProductsStart,
   getTopProductsSuccess,
   getTopProductsFailure,
-  // Sales Trends
   getSalesTrendsStart,
   getSalesTrendsSuccess,
   getSalesTrendsFailure,
-  // Refresh All
-  refreshAllMetricsStart,
-  refreshAllMetricsSuccess,
-  refreshAllMetricsFailure,
-  // Filters
   setDashboardFilters,
   resetDashboardFilters,
-  // Reset
   resetDashboardState,
   clearDashboardError,
 } = ownerDashboardSlice.actions;
@@ -291,10 +232,149 @@ export const {
 export default ownerDashboardSlice.reducer;
 
 // ============================================================================
+// THUNKS (Actions asynchrones)
+// ============================================================================
+
+/**
+ * Récupérer les statistiques quotidiennes
+ */
+export const fetchDailyStats = () => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(getDailyStatsStart());
+    const response = await ownerDashboardRequests.getDailyStats();
+    dispatch(getDailyStatsSuccess(response.data));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des statistiques';
+    dispatch(getDailyStatsFailure(errorMessage));
+    throw error;
+  }
+};
+
+/**
+ * Récupérer les ventes par produit
+ */
+export const fetchSalesByProduct = (params?: ISalesByProductParams) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(getSalesByProductStart());
+      const response = await ownerDashboardRequests.getSalesByProduct(params);
+      dispatch(getSalesByProductSuccess(response.data));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des ventes par produit';
+      dispatch(getSalesByProductFailure(errorMessage));
+      throw error;
+    }
+  };
+
+/**
+ * Récupérer les ventes mensuelles
+ */
+export const fetchSalesByMonth = (params?: ISalesByMonthParams) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(getSalesByMonthStart());
+      const response = await ownerDashboardRequests.getSalesByMonth(params);
+      dispatch(getSalesByMonthSuccess(response.data));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des ventes mensuelles';
+      dispatch(getSalesByMonthFailure(errorMessage));
+      throw error;
+    }
+  };
+
+/**
+ * Récupérer les statistiques par magasin
+ */
+export const fetchStatsByStore = () => async (dispatch: AppDispatch) => {
+  try {
+    dispatch(getStatsByStoreStart());
+    const response = await ownerDashboardRequests.getStatsByStore();
+    dispatch(getStatsByStoreSuccess(response.data));
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des statistiques par magasin';
+    dispatch(getStatsByStoreFailure(errorMessage));
+    throw error;
+  }
+};
+
+/**
+ * Récupérer les produits les plus vendus
+ */
+export const fetchTopProducts = (params?: ITopProductsParams) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(getTopProductsStart());
+      const response = await ownerDashboardRequests.getTopProducts(params);
+      dispatch(getTopProductsSuccess(response.data));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des top produits';
+      dispatch(getTopProductsFailure(errorMessage));
+      throw error;
+    }
+  };
+
+/**
+ * Récupérer les tendances de ventes
+ */
+export const fetchSalesTrends = (params?: ISalesTrendsParams) => 
+  async (dispatch: AppDispatch) => {
+    try {
+      dispatch(getSalesTrendsStart());
+      const response = await ownerDashboardRequests.getSalesTrends(params);
+      dispatch(getSalesTrendsSuccess(response.data));
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la récupération des tendances';
+      dispatch(getSalesTrendsFailure(errorMessage));
+      throw error;
+    }
+  };
+
+/**
+ * Charger les données initiales du dashboard
+ * (Appelé au montage du composant)
+ */
+export const loadInitialDashboardData = () => async (dispatch: AppDispatch) => {
+  try {
+    await Promise.all([
+      dispatch(fetchDailyStats()),
+      dispatch(fetchSalesByProduct({ period: 'today' })),
+      dispatch(fetchSalesByMonth({ year: new Date().getFullYear() })),
+      dispatch(fetchStatsByStore()),
+    ]);
+  } catch (error) {
+    console.error('Erreur lors du chargement initial du dashboard:', error);
+  }
+};
+
+/**
+ * Rafraîchir toutes les métriques du dashboard
+ */
+export const refreshAllDashboardMetrics = (params?: {
+  productPeriod?: ISalesByProductParams['period'];
+  year?: number;
+}) => async (dispatch: AppDispatch) => {
+  try {
+    await Promise.all([
+      dispatch(fetchDailyStats()),
+      dispatch(fetchSalesByProduct({ period: params?.productPeriod || 'today' })),
+      dispatch(fetchSalesByMonth({ year: params?.year || new Date().getFullYear() })),
+      dispatch(fetchStatsByStore()),
+    ]);
+  } catch (error) {
+    console.error('Erreur lors du rafraîchissement du dashboard:', error);
+  }
+};
+
+// ============================================================================
 // SELECTORS
 // ============================================================================
 
-// Sélecteur de base
 const selectOwnerDashboardState = (state: RootState) => state.ownerDashboard;
 
 // Données de base
@@ -344,16 +424,6 @@ export const selectIsAllLoaded = createSelector(
   (loadingStates) => Object.values(loadingStates).every((isLoading) => !isLoading)
 );
 
-export const selectIsDailyStatsLoading = createSelector(
-  [selectLoadingStates],
-  (loadingStates) => loadingStates.dailyStats
-);
-
-export const selectIsSalesByProductLoading = createSelector(
-  [selectLoadingStates],
-  (loadingStates) => loadingStates.salesByProduct
-);
-
 // Erreurs
 export const selectDashboardError = createSelector(
   [selectOwnerDashboardState],
@@ -382,46 +452,18 @@ export const selectLastUpdated = createSelector(
   (dashboard) => dashboard.lastUpdated
 );
 
-export const selectShouldRefresh = createSelector(
-  [selectLastUpdated],
-  (lastUpdated) => {
-    if (!lastUpdated) return true;
-    const fiveMinutes = 5 * 60 * 1000;
-    return Date.now() - new Date(lastUpdated).getTime() > fiveMinutes;
-  }
-);
-
 // Sélecteurs calculés
-export const selectTotalDailySales = createSelector(
-  [selectDailyStats],
-  (dailyStats) => {
-    if (!dailyStats) return '0.00';
-    return dailyStats.dailySales.amount;
-  }
-);
-
-export const selectTotalStoresCount = createSelector(
-  [selectStatsByStore],
-  (statsByStore) => {
-    if (!statsByStore) return 0;
-    return statsByStore.totalStores;
-  }
-);
-
-export const selectTotalConnectedCashiers = createSelector(
-  [selectDailyStats],
-  (dailyStats) => {
-    if (!dailyStats) return 0;
-    return dailyStats.connectedCashiers.count;
-  }
-);
-
-export const selectTotalDailyTickets = createSelector(
-  [selectDailyStats],
-  (dailyStats) => {
-    if (!dailyStats) return 0;
-    return dailyStats.dailyTickets.count;
-  }
+export const selectDashboardSummary = createSelector(
+  [selectDailyStats, selectStatsByStore, selectTopProducts, selectSalesByMonth],
+  (dailyStats, statsByStore, topProducts, salesByMonth) => ({
+    dailySales: dailyStats?.dailySales.amount || '0.00',
+    dailyTickets: dailyStats?.dailyTickets.count || 0,
+    connectedCashiers: dailyStats?.connectedCashiers.count || 0,
+    totalStores: statsByStore?.totalStores || 0,
+    topProductsCount: topProducts?.topProducts.length || 0,
+    yearTotal: salesByMonth?.summary.totalSales || '0.00',
+    currency: dailyStats?.currency || 'HTG',
+  })
 );
 
 export const selectTopPerformingStore = createSelector(
@@ -435,64 +477,4 @@ export const selectTopPerformingStore = createSelector(
       return currentSales > bestSales ? current : best;
     });
   }
-);
-
-export const selectTop3Products = createSelector(
-  [selectTopProducts],
-  (topProducts) => {
-    if (!topProducts) return [];
-    return topProducts.topProducts.slice(0, 3);
-  }
-);
-
-export const selectTopProductsTotalRevenue = createSelector(
-  [selectTopProducts],
-  (topProducts) => {
-    if (!topProducts) return 0;
-    return topProducts.topProducts.reduce((sum, product) => sum + product.totalRevenue, 0);
-  }
-);
-
-export const selectSalesByProductChartData = createSelector(
-  [selectSalesByProduct],
-  (salesByProduct) => {
-    if (!salesByProduct) return [];
-    return salesByProduct.products.map((product) => ({
-      name: product.name,
-      value: product.value,
-      color: product.color,
-    }));
-  }
-);
-
-export const selectSalesByMonthChartData = createSelector(
-  [selectSalesByMonth],
-  (salesByMonth) => {
-    if (!salesByMonth) return [];
-    return salesByMonth.monthlyData.map((month) => ({
-      month: month.month,
-      sales: month.sales,
-      orders: month.orders,
-    }));
-  }
-);
-
-export const selectHasDashboardData = createSelector(
-  [selectDailyStats, selectSalesByProduct, selectStatsByStore],
-  (dailyStats, salesByProduct, statsByStore) => {
-    return !!(dailyStats || salesByProduct || statsByStore);
-  }
-);
-
-export const selectDashboardSummary = createSelector(
-  [selectDailyStats, selectStatsByStore, selectTopProducts, selectSalesByMonth],
-  (dailyStats, statsByStore, topProducts, salesByMonth) => ({
-    dailySales: dailyStats?.dailySales.amount || '0.00',
-    dailyTickets: dailyStats?.dailyTickets.count || 0,
-    connectedCashiers: dailyStats?.connectedCashiers.count || 0,
-    totalStores: statsByStore?.totalStores || 0,
-    topProductsCount: topProducts?.topProducts.length || 0,
-    yearTotal: salesByMonth?.summary.totalSales || '0.00',
-    currency: dailyStats?.currency || 'HTG',
-  })
 );
