@@ -13,7 +13,7 @@ export interface IProductItem {
   };
   name: string;
   barcode: string;
-  type: 'weight' | 'fuel' | 'unit';
+  type: 'weight' | 'fuel' | 'quantity' | 'volume';
   unit: string;
   variants: any[];
   inventory: {
@@ -22,7 +22,7 @@ export interface IProductItem {
     alert_enabled: boolean;
   };
   pricing: {
-    mode: 'fixed' | 'fuel' | 'variable';
+    mode: 'fixed' | 'fuel' | 'dynamic' | 'perUnit';
     base_price: number;
     buy_price?: number;
     fuel_config?: {
@@ -70,7 +70,7 @@ export interface ProductListResponse {
 export interface ProductFormValues {
   name: string;
   barcode?: string;
-  type: 'weight' | 'fuel' | 'unit';
+  type: 'weight' | 'fuel' | 'quantity' | 'volume'; // ✅ Correspond à IProductItem
   unit: string;
   store_id: string;
   category_id?: string;
@@ -80,7 +80,7 @@ export interface ProductFormValues {
     alert_enabled: boolean;
   };
   pricing: {
-    mode: 'fixed' | 'fuel' | 'variable';
+    mode: 'fixed' | 'fuel' | 'dynamic' | 'perUnit'; // ✅ Correspond à IProductItem
     base_price: number;
     buy_price?: number;
     fuel_config?: {

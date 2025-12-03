@@ -31,7 +31,7 @@ import { productRequests } from 'src/utils/request';
 interface QuickEditFormValues {
   name: string;
   barcode: string;
-  type: 'weight' | 'fuel' | 'unit';
+  type: 'weight' | 'fuel' | 'quantity' | 'volume';
   unit: string;
   inventory: {
     current: number;
@@ -61,10 +61,11 @@ export default function ProductQuickEditForm({
   const { enqueueSnackbar } = useSnackbar();
 
   const TYPE_OPTIONS = [
-    { value: 'weight', label: 'Poids' },
-    { value: 'fuel', label: 'Carburant' },
-    { value: 'unit', label: 'Unité' },
-  ];
+  { value: 'quantity', label: 'Quantité' },
+  { value: 'weight', label: 'Poids' },
+  { value: 'volume', label: 'Volume' },
+  { value: 'fuel', label: 'Carburant' },
+];
 
   const ProductSchema = Yup.object().shape({
     name: Yup.string()
@@ -72,8 +73,8 @@ export default function ProductQuickEditForm({
       .min(2, 'Le nom doit contenir au moins 2 caractères'),
     barcode: Yup.string().optional(),
     type: Yup.string()
-      .required('Le type est requis')
-      .oneOf(['weight', 'fuel', 'unit'], 'Type invalide'),
+  .required('Le type est requis')
+  .oneOf(['weight', 'fuel', 'quantity', 'volume'], 'Type invalide'),
     unit: Yup.string().required('L\'unité est requise'),
     inventory: Yup.object().shape({
       current: Yup.number()
@@ -99,7 +100,7 @@ export default function ProductQuickEditForm({
     () => ({
       name: currentProduct?.name || '',
       barcode: currentProduct?.barcode || '',
-      type: currentProduct?.type || 'unit',
+      type: currentProduct?.type || 'quantity',
       unit: currentProduct?.unit || '',
       inventory: {
         current: currentProduct?.inventory.current || 0,

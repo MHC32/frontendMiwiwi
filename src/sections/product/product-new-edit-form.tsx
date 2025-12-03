@@ -62,93 +62,95 @@ export default function ProductNewEditForm({ currentProduct, productId }: Props)
 
   // Options pour les types de produits
   const TYPE_OPTIONS = [
-    { value: 'weight', label: 'Poids' },
-    { value: 'fuel', label: 'Carburant' },
-    { value: 'unit', label: 'Unité' },
-  ];
+  { value: 'quantity', label: 'Quantité' }, 
+  { value: 'weight', label: 'Poids' },
+  { value: 'volume', label: 'Volume' }, 
+  { value: 'fuel', label: 'Carburant' },
+];
 
   // Options pour le mode de tarification
-  const PRICING_MODE_OPTIONS = [
-    { value: 'fixed', label: 'Prix fixe' },
-    { value: 'fuel', label: 'Prix carburant' },
-    { value: 'variable', label: 'Prix variable' },
-  ];
+const PRICING_MODE_OPTIONS = [
+  { value: 'fixed', label: 'Prix fixe' },
+  { value: 'perUnit', label: 'Prix par unité' }, 
+  { value: 'dynamic', label: 'Prix variable' }, 
+  { value: 'fuel', label: 'Prix carburant' },
+];
 
   // Validation schema
   const NewProductSchema = Yup.object().shape({
-    name: Yup.string()
-      .required('Le nom du produit est requis')
-      .min(2, 'Le nom doit contenir au moins 2 caractères')
-      .max(100, 'Le nom ne peut pas dépasser 100 caractères'),
-    barcode: Yup.string().optional(),
-    type: Yup.string()
-      .required('Le type de produit est requis')
-      .oneOf(['weight', 'fuel', 'unit'], 'Type de produit invalide'),
-    unit: Yup.string()
-      .required('L\'unité est requise')
-      .min(1, 'L\'unité doit contenir au moins 1 caractère'),
-    store_id: Yup.string().required('Le magasin est requis'),
-    category_id: Yup.string().optional(),
-    inventory: Yup.object().shape({
-      current: Yup.number()
-        .required('Le stock actuel est requis')
-        .min(0, 'Le stock ne peut pas être négatif'),
-      min_stock: Yup.number()
-        .required('Le stock minimum est requis')
-        .min(0, 'Le stock minimum ne peut pas être négatif'),
-      alert_enabled: Yup.boolean(),
-    }),
-    pricing: Yup.object().shape({
-      mode: Yup.string()
-        .required('Le mode de tarification est requis')
-        .oneOf(['fixed', 'fuel', 'variable'], 'Mode de tarification invalide'),
-      base_price: Yup.number()
-        .required('Le prix de base est requis')
-        .min(0, 'Le prix ne peut pas être négatif'),
-      buy_price: Yup.number()
-        .min(0, 'Le prix d\'achat ne peut pas être négatif')
-        .optional(),
-      fuel_config: Yup.object().when('mode', {
-        is: 'fuel',
-        then: () => Yup.object().shape({
-          price_per_unit: Yup.number()
-            .required('Le prix par unité est requis')
-            .min(0, 'Le prix par unité ne peut pas être négatif'),
-          display_unit: Yup.string()
-            .required('L\'unité d\'affichage est requise'),
-        }),
-        otherwise: () => Yup.object().optional(),
+  name: Yup.string()
+    .required('Le nom du produit est requis')
+    .min(2, 'Le nom doit contenir au moins 2 caractères')
+    .max(100, 'Le nom ne peut pas dépasser 100 caractères'),
+  barcode: Yup.string().optional(),
+  type: Yup.string()
+    .required('Le type de produit est requis')
+    .oneOf(['weight', 'fuel', 'quantity', 'volume'], 'Type de produit invalide'), // ✅ Corrigé
+  unit: Yup.string()
+    .required('L\'unité est requise')
+    .min(1, 'L\'unité doit contenir au moins 1 caractère'),
+  store_id: Yup.string().required('Le magasin est requis'),
+  category_id: Yup.string().optional(),
+  inventory: Yup.object().shape({
+    current: Yup.number()
+      .required('Le stock actuel est requis')
+      .min(0, 'Le stock ne peut pas être négatif'),
+    min_stock: Yup.number()
+      .required('Le stock minimum est requis')
+      .min(0, 'Le stock minimum ne peut pas être négatif'),
+    alert_enabled: Yup.boolean(),
+  }),
+  pricing: Yup.object().shape({
+    mode: Yup.string()
+      .required('Le mode de tarification est requis')
+      .oneOf(['fixed', 'fuel', 'dynamic', 'perUnit'], 'Mode de tarification invalide'), // ✅ Corrigé
+    base_price: Yup.number()
+      .required('Le prix de base est requis')
+      .min(0, 'Le prix ne peut pas être négatif'),
+    buy_price: Yup.number()
+      .min(0, 'Le prix d\'achat ne peut pas être négatif')
+      .optional(),
+    fuel_config: Yup.object().when('mode', {
+      is: 'fuel',
+      then: () => Yup.object().shape({
+        price_per_unit: Yup.number()
+          .required('Le prix par unité est requis')
+          .min(0, 'Le prix par unité ne peut pas être négatif'),
+        display_unit: Yup.string()
+          .required('L\'unité d\'affichage est requise'),
       }),
+      otherwise: () => Yup.object().optional(),
     }),
-    is_active: Yup.boolean(),
-  });
+  }),
+  is_active: Yup.boolean(),
+});
 
-  const defaultValues = useMemo<FormValuesProps>(
-    () => ({
-      name: currentProduct?.name || '',
-      barcode: currentProduct?.barcode || '',
-      type: currentProduct?.type || 'unit',
-      unit: currentProduct?.unit || '',
-      store_id: currentProduct?.store_id._id || '',
-      category_id: currentProduct?.category_id?._id || '',
-      inventory: {
-        current: currentProduct?.inventory.current || 0,
-        min_stock: currentProduct?.inventory.min_stock || 0,
-        alert_enabled: currentProduct?.inventory.alert_enabled || false,
+ const defaultValues = useMemo<FormValuesProps>(
+  () => ({
+    name: currentProduct?.name || '',
+    barcode: currentProduct?.barcode || '',
+    type: currentProduct?.type || 'quantity', 
+    unit: currentProduct?.unit || '',
+    store_id: currentProduct?.store_id._id || '',
+    category_id: currentProduct?.category_id?._id || '',
+    inventory: {
+      current: currentProduct?.inventory.current || 0,
+      min_stock: currentProduct?.inventory.min_stock || 0,
+      alert_enabled: currentProduct?.inventory.alert_enabled || false,
+    },
+    pricing: {
+      mode: currentProduct?.pricing.mode || 'fixed',
+      base_price: currentProduct?.pricing.base_price || 0,
+      buy_price: currentProduct?.pricing.buy_price || 0,
+      fuel_config: {
+        price_per_unit: currentProduct?.pricing.fuel_config?.price_per_unit || 0,
+        display_unit: currentProduct?.pricing.fuel_config?.display_unit || '',
       },
-      pricing: {
-        mode: currentProduct?.pricing.mode || 'fixed',
-        base_price: currentProduct?.pricing.base_price || 0,
-        buy_price: currentProduct?.pricing.buy_price || 0,
-        fuel_config: {
-          price_per_unit: currentProduct?.pricing.fuel_config?.price_per_unit || 0,
-          display_unit: currentProduct?.pricing.fuel_config?.display_unit || '',
-        },
-      },
-      is_active: currentProduct?.is_active ?? true,
-    }),
-    [currentProduct]
-  );
+    },
+    is_active: currentProduct?.is_active ?? true,
+  }),
+  [currentProduct]
+);
 
   const methods = useForm<FormValuesProps>({
     resolver: yupResolver(NewProductSchema),
