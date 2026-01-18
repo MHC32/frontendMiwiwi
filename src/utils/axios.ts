@@ -5,7 +5,8 @@ import { logoutSuccess } from 'src/redux/slices/auth.slice';
 
 const axiosInstance = axios.create({
   baseURL: HOST_API,
-  withCredentials: true
+  withCredentials: true,
+  timeout: 30000, // 30 secondes - important pour connexions mobiles lentes
 });
 
 // Intercepteur pour la gestion des erreurs
